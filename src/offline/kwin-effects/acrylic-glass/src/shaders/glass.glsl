@@ -58,10 +58,18 @@ void main(void)
     vec2 lensUV = uv;
     vec3 lensNormal = vec3(0.0, 0.0, 1.0);
     if (lensStrength > 0.0) {
-        lensUV = dockSurface
-            ? lgDockLensUV(uv, outNorm, pos, blurSize, backgroundSize, lensStrength, edgeQ)
-            : lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize,
-                       cornerRadius, cornerSquircle, lensNormal);
+        lensUV = lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize,
+                          cornerRadius, cornerSquircle, lensNormal);
+        if (dockSurface) {
+            vec2 radial = pos / max(halfSize, vec2(1.0));
+            radial /= max(length(radial), 0.001);
+            vec2 dockNormal = normalize(mix(outNorm, radial, 0.65));
+            vec2 textureNormal = vec2(dockNormal.x, -dockNormal.y);
+            float thickness = min(min(blurSize.x, blurSize.y) * lensStrength * 3.5,
+                                  refrBand * 0.45);
+            lensUV = clamp(lensUV - textureNormal * thickness * edgeQ
+                           / max(backgroundSize, vec2(1.0)), 0.0, 1.0);
+        }
     }
     vec2 texel = halfpixel * 2.0;
     vec3 col;

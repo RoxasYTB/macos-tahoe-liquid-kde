@@ -237,7 +237,8 @@ int main(int argc, char **argv)
             const int horizontalShift = qRed(bentDock.pixel(x,4)) - qRed(flatDock.pixel(x,4));
             require(std::abs(horizontalShift) >= 2 && std::abs(horizontalShift) <= 6
                         && horizontalShift * (96 - x) > 0,
-                    QStringLiteral("Dock lens must bend diagonally toward its centre without excessive stretch"));
+                    QStringLiteral("Dock lens must bend diagonally toward its centre without excessive stretch (x=%1, shift=%2)")
+                        .arg(x).arg(horizontalShift));
             const int topShift = qGreen(bentDock.pixel(x,4)) - qGreen(flatDock.pixel(x,4));
             const int bottomShift = qGreen(bentDock.pixel(x,123)) - qGreen(flatDock.pixel(x,123));
             require(std::abs(topShift) > 12 && topShift * bottomShift < 0,
@@ -249,6 +250,25 @@ int main(int argc, char **argv)
         }
         if (dockReference.isNull()) dockReference = bentDock;
         else require(dockReference == bentDock, QStringLiteral("Dock differs between shader profiles"));
+        shader.setUniformValue("magnifyGlassStrength", 0.12f);
+        const auto strongDock = render().convertToFormat(QImage::Format_RGBA8888);
+        require(strongDock.pixel(96,64) == flatDock.pixel(96,64),
+                QStringLiteral("Dock centre must remain undistorted at default lens strength"));
+        const int strongDomeShift = qGreen(strongDock.pixel(96,32)) - qGreen(flatDock.pixel(96,32));
+        require(std::abs(strongDomeShift) >= 4,
+                QStringLiteral("Default Dock lens must refract its interior, not only its rim (shift=%1)").arg(strongDomeShift));
+        shader.setUniformValue("magnifyGlassStrength", 0.02f);
+        const QByteArray dockCaptureDirectory = qgetenv("MTTKDE_GLASS_SHADER_CAPTURE_DIR");
+        if (!dockCaptureDirectory.isEmpty()) {
+            const QString directory = QString::fromLocal8Bit(dockCaptureDirectory);
+            require(QDir().mkpath(directory), QStringLiteral("Could not create dock shader capture directory"));
+            require(flatDock.save(directory + "/dock-flat.png"),
+                    QStringLiteral("Could not save flat Dock glass capture"));
+            require(bentDock.save(directory + "/dock-lens.png"),
+                    QStringLiteral("Could not save refracted Dock capture"));
+            require(strongDock.save(directory + "/dock-lens-default.png"),
+                    QStringLiteral("Could not save default Dock lens capture"));
+        }
 
         // The Dock reflection must catch its silhouette without painting a
         // broad rim or changing the transparent centre, even on black.
@@ -266,10 +286,8 @@ int main(int argc, char **argv)
                 QStringLiteral("Dock reflection must form a soft glint, not a straight horizontal stripe"));
         require(qRed(litDock.pixel(96,5)) <= 1 && qRed(litDock.pixel(96,64)) == 0,
                 QStringLiteral("Dock reflection must stay narrow and leave the centre clear"));
-        const QByteArray dockCaptureDirectory = qgetenv("MTTKDE_GLASS_SHADER_CAPTURE_DIR");
         if (!dockCaptureDirectory.isEmpty()) {
             const QString directory = QString::fromLocal8Bit(dockCaptureDirectory);
-            require(QDir().mkpath(directory), QStringLiteral("Could not create dock shader capture directory"));
             require(litDock.save(directory + "/dock-glint.png"),
                     QStringLiteral("Could not save Dock reflection capture"));
         }
