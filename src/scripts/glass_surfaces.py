@@ -104,7 +104,11 @@ def soften_menu_frame(root: ET.Element) -> None:
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = float(style.get("opacity", node.get("opacity", "1")))
-        if fill == "#000000" and alpha == 0.06:
+        dark_shadow = node.get("id") in ("path3", "path22") and fill in (
+            "url(#linearGradient3)", "url(#radialGradient5)") and alpha == 0.5
+        if dark_shadow:
+            value = "0.12"
+        elif fill == "#000000" and alpha == 0.06:
             value = "0.015"
         elif fill == "#ffffff" and alpha == 0.22:
             value = "0.14"

@@ -183,6 +183,10 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
         outline = next(node for node in root.iter() if node.get("id") == node_id)
         outline_style = dict(part.split(":", 1) for part in outline.get("style", "").split(";") if ":" in part)
         assert float(outline_style["opacity"]) == 0.0
+    for node_id in ("path3", "path22"):
+        shadow = next(node for node in root.iter() if node.get("id") == node_id)
+        shadow_style = dict(part.split(":", 1) for part in shadow.get("style", "").split(";") if ":" in part)
+        assert float(shadow_style["opacity"]) == pytest.approx(.12)
     dark_rim = next(node for node in root.iter() if node.get("fill") == "#000000" and node.get("opacity") == "0.015")
     assert float(dark_rim.get("opacity")) == pytest.approx(.015)
     light_rim = next(node for node in root.iter() if node.get("fill") == "#ffffff" and node.get("opacity") == "0.14")
