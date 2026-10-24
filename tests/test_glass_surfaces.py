@@ -214,6 +214,11 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
     assert target.read_bytes() == installed
 
 
+def test_tahoe_dark_kvantum_disables_heavy_native_popup_shadow():
+    config = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.kvconfig"
+    assert "shadowless_popup=true" in config.read_text()
+
+
 @pytest.mark.parametrize("mode", ["", "Dark"])
 def test_golden_gate_qt_menu_center_and_frame_follow_appearance(mode, tmp_path, monkeypatch):
     import glass_surfaces
