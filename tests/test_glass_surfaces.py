@@ -246,6 +246,39 @@ def test_tahoe_dark_qt_menu_tiles_remove_heavy_black_frame(tmp_path, monkeypatch
     assert float(left_style["opacity"]) < .2
 
 
+def test_tahoe_dark_menu_outline_tiles_render_transparent(tmp_path, monkeypatch):
+    import glass_surfaces
+    gi = pytest.importorskip("gi")
+    cairo = pytest.importorskip("cairo")
+    gi.require_version("Rsvg", "2.0")
+    from gi.repository import Rsvg
+    monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
+    source = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.svg"
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    glass_surfaces.apply_kvantum_surface_defaults(target)
+
+    def render(path):
+        handle = Rsvg.Handle.new_from_file(str(path))
+        _, width, height = handle.get_intrinsic_size_in_pixels()
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
+        context = cairo.Context(surface)
+        viewport = Rsvg.Rectangle()
+        viewport.x = viewport.y = 0
+        viewport.width, viewport.height = width, height
+        assert handle.render_document(context, viewport)
+        surface.flush()
+        return surface
+
+    original = render(source)
+    updated = render(target)
+    for x, y in ((80, 510), (150, 520), (115, 515)):
+        original_alpha = original.get_data()[y * original.get_stride() + x * 4 + 3]
+        updated_alpha = updated.get_data()[y * updated.get_stride() + x * 4 + 3]
+        assert original_alpha > 0
+        assert updated_alpha == 0
+
+
 @pytest.mark.parametrize("mode", ["", "Dark"])
 def test_golden_gate_menu_fix_preserves_other_surfaces(mode, tmp_path, monkeypatch):
     import glass_surfaces
