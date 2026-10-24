@@ -360,6 +360,64 @@ def _remove_dock_margin_separators() -> bool:
     return changed
 
 
+def _disable_dock_launcher_separators() -> bool:
+    """Keep pinned and running tasks in one continuous MacTahoe Dock."""
+    appletsrc = HOME / ".config/plasma-org.kde.plasma.desktop-appletsrc"
+    try:
+        text = appletsrc.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+    panel_pattern = re.compile(r"^\[Containments\]\[(\d+)\](?:\n|$)", re.MULTILINE)
+    boundaries = [match.start() for match in panel_pattern.finditer(text)] + [len(text)]
+    changed = False
+    for start, end in reversed(list(zip(boundaries, boundaries[1:]))):
+        block = text[start:end]
+        panel_match = panel_pattern.match(block)
+        if not panel_match or "plugin=org.kde.panel" not in block:
+            continue
+        panel_id = panel_match.group(1)
+        task_ids = [
+            applet_id
+            for applet_id, settings in re.findall(
+                rf"^\[Containments\]\[{panel_id}\]\[Applets\]\[(\d+)\]\n"
+                rf"([^\[]*)",
+                block, re.MULTILINE,
+            )
+            if re.search(rf"^plugin={re.escape(MAC_TASKS_ID)}$", settings, re.MULTILINE)
+        ]
+        if not task_ids:
+            continue
+        for applet_id in task_ids:
+            general = re.compile(
+                rf"(^\[Containments\]\[{panel_id}\]\[Applets\]"
+                rf"\[{applet_id}\]\[Configuration\]\[General\]\n)([^\[]*)",
+                re.MULTILINE,
+            )
+            match = general.search(block)
+            if match:
+                config = match.group(2)
+                updated = re.sub(r"^separateLaunchers=[^\n]*$",
+                                 "separateLaunchers=false", config,
+                                 flags=re.MULTILINE)
+                if updated == config and not re.search(
+                        r"^separateLaunchers=", config, re.MULTILINE):
+                    updated = "separateLaunchers=false\n" + config
+                if updated != config:
+                    block = block[:match.start(2)] + updated + block[match.end(2):]
+                    changed = True
+            else:
+                block = block.rstrip() + (
+                    f"\n\n[Containments][{panel_id}][Applets][{applet_id}]"
+                    "[Configuration][General]\nseparateLaunchers=false\n"
+                )
+                changed = True
+        text = text[:start] + block + text[end:]
+    if changed:
+        appletsrc.write_text(text, encoding="utf-8")
+    return changed
+
+
 def _wait_for_layout_install(timeout_seconds: float = 5.0) -> bool:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
@@ -458,6 +516,7 @@ def install() -> None:
         record_applied_edition(HOME, edition_name())
         _mark_layout_installed()
         _remove_dock_margin_separators()
+        _disable_dock_launcher_separators()
         ok(tr("Layout installed (kept {count} pinned apps)", count=len(pins)) if pins
            else tr("Layout installed"))
     else:

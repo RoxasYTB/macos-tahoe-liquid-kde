@@ -237,6 +237,14 @@ def test_layout_js_references_real_plasmoid_ids():
     assert 'bar.addWidget("org.kde.plasma.marginsseparator")' not in layout_js
     assert 'dock.addWidget("org.kde.plasma.marginsseparator")' not in layout_js
     assert 'tasks.writeConfig("separateLaunchers", false)' in layout_js
+    taskmanager_config = (
+        OFFLINE_DIR
+        / "plasmoids/org.kde.mac.tahoe.liquid.taskmanager/contents/config/main.xml"
+    ).read_text()
+    assert '<entry name="separateLaunchers" type="Bool">' in taskmanager_config
+    assert '<default>false</default>' in taskmanager_config.split(
+        '<entry name="separateLaunchers" type="Bool">', 1
+    )[1].split("</entry>", 1)[0]
     taskmanager_qml = (
         OFFLINE_DIR
         / "plasmoids/org.kde.mac.tahoe.liquid.taskmanager/contents/ui/main.qml"

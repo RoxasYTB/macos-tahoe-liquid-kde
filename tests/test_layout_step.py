@@ -101,6 +101,7 @@ def test_remove_dock_margin_separators_preserves_top_bar(monkeypatch, tmp_path):
 plugin=org.kde.panel
 
 [Containments][1][Applets][2]
+immutability=1
 plugin=org.kde.mac.tahoe.liquid.icontasks
 
 [Containments][1][Applets][3]
@@ -122,6 +123,7 @@ AppletOrder=5
 plugin=org.kde.panel
 
 [Containments][6][Applets][7]
+immutability=1
 plugin=org.kde.mac.tahoe.liquid.icontasks
 
 [Containments][6][Applets][8]
@@ -140,6 +142,41 @@ plugin=org.kde.plasma.marginsseparator
     assert "[Containments][6][Applets][8]" not in result
     assert "panels().forEach" in evaluated[0]
     assert "widget.remove()" in evaluated[0]
+
+
+def test_disable_dock_launcher_separators_updates_existing_tahoe_docks(monkeypatch, tmp_path):
+    monkeypatch.setattr(layout, "HOME", tmp_path)
+    config = tmp_path / ".config" / "plasma-org.kde.plasma.desktop-appletsrc"
+    config.parent.mkdir(parents=True)
+    config.write_text("""\
+[Containments][1]
+plugin=org.kde.panel
+
+[Containments][1][Applets][2]
+plugin=org.kde.mac.tahoe.liquid.icontasks
+
+[Containments][1][Applets][2][Configuration][General]
+separateLaunchers=true
+
+[Containments][4]
+plugin=org.kde.panel
+
+[Containments][4][Applets][5]
+plugin=org.kde.plasma.icontasks
+
+[Containments][6]
+plugin=org.kde.panel
+
+[Containments][6][Applets][7]
+plugin=org.kde.mac.tahoe.liquid.icontasks
+""")
+
+    assert layout._disable_dock_launcher_separators()
+    result = config.read_text()
+    assert "[Containments][1][Applets][2][Configuration][General]\nseparateLaunchers=false" in result
+    assert "[Containments][6][Applets][7][Configuration][General]\nseparateLaunchers=false" in result
+    assert "[Containments][4][Applets][5][Configuration][General]" not in result
+    assert not layout._disable_dock_launcher_separators()
 
 
 def test_reset_with_pins_writes_launchers_into_script(monkeypatch):

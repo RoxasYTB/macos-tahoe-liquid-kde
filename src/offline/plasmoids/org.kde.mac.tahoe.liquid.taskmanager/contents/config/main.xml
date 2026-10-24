@@ -56,7 +56,7 @@
     </entry>
     <entry name="separateLaunchers" type="Bool">
       <label>Whether launcher tasks are sorted separately at the left side of the widget or can be mixed with other tasks.</label>
-      <default>true</default>
+      <default>false</default>
     </entry>
     <entry name="hideLauncherOnStart" type="Bool">
       <label>Whether launcher tasks should be hidden when their application is launched.</label>
