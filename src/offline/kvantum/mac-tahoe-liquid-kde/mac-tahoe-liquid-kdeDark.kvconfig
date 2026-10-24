@@ -75,12 +75,12 @@ menu_blur_radius=9
 tooltip_blur_radius=6
 
 [GeneralColors]
-window.color=#2a2a2a8C
-inactive.window.color=#2a2a2a8C
-base.color=#2a2a2a8C
-inactive.base.color=#2a2a2a8C
-alt.base.color=#3333338C
-inactive.alt.base.color=#2e2e2e8C
+window.color=#2a2a2a55
+inactive.window.color=#2a2a2a55
+base.color=#2a2a2a55
+inactive.base.color=#2a2a2a55
+alt.base.color=#33333355
+inactive.alt.base.color=#2e2e2e55
 button.color=#656565
 light.color=#5a5a5a
 mid.light.color=#555555
@@ -94,7 +94,7 @@ window.text.color=#dedede
 inactive.window.text.color=#bfbfbf
 button.text.color=#dedede
 disabled.text.color=#bfbfbf
-tooltip.base.color=#3939398C
+tooltip.base.color=#39393955
 tooltip.text.color=#dedede
 highlight.text.color=#ffffff
 inactive.highlight.text.color=#f5f5f5

@@ -7,6 +7,27 @@ import xml.etree.ElementTree as ET
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1] / "src/offline/plasma-theme"
+KVANTUM_DARK = (Path(__file__).resolve().parents[1]
+                / "src/offline/kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.kvconfig")
+
+
+def test_dark_kvantum_menu_surfaces_use_reduced_black_tint():
+    lines = KVANTUM_DARK.read_text().splitlines()
+    section_start = lines.index("[GeneralColors]") + 1
+    colors = {}
+    for line in lines[section_start:]:
+        if line.startswith("["):
+            break
+        if "=" in line:
+            key, value = line.split("=", 1)
+            colors[key] = value
+    assert colors["window.color"] == "#2a2a2a55"
+    assert colors["inactive.window.color"] == "#2a2a2a55"
+    assert colors["base.color"] == "#2a2a2a55"
+    assert colors["inactive.base.color"] == "#2a2a2a55"
+    assert colors["alt.base.color"] == "#33333355"
+    assert colors["inactive.alt.base.color"] == "#2e2e2e55"
+    assert colors["tooltip.base.color"] == "#39393955"
 
 
 @pytest.mark.parametrize("mode", ["Light", "Dark"])
