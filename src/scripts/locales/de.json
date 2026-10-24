@@ -64,6 +64,7 @@
   "Acrylic Glass KCM install failed": "Installation des Acrylic-Glass-Einstellungsmoduls fehlgeschlagen",
   "Acrylic Glass KCM installed": "Acrylic-Glass-Einstellungsmodul installiert",
   "Acrylic Glass already installed": "Acrylic Glass bereits installiert",
+  "Acrylic Glass plugin directory is not accessible: {exc}": "Auf das Acrylic-Glass-Pluginverzeichnis kann nicht zugegriffen werden: {exc}",
   "Acrylic Glass could not be disabled in kwinrc": "Acrylic Glass konnte in kwinrc nicht deaktiviert werden",
   "Acrylic Glass installed": "Acrylic Glass installiert",
   "Acrylic Glass installed but activation was not confirmed. Log out and back in after a KWin upgrade; if it remains inactive, check the KWin log for liquidglass shader or plugin errors.": "Acrylic Glass installiert, Aktivierung jedoch nicht bestätigt. Nach einer KWin-Aktualisierung abmelden und erneut anmelden; bleibt der Effekt inaktiv, das KWin-Protokoll auf liquidglass-Shader- oder Pluginfehler prüfen.",

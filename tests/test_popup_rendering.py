@@ -173,8 +173,9 @@ def test_xwayland_property_is_read_and_invalid_data_never_means_full_blur(
         repo / "src/offline/kwin-effects/acrylic-glass/src/effect.cpp"
     ).read_text()
     block = source.split("    // Xwayland still advertises blur", 1)[1].split(
-        "    // Wayland: prefer", 1
+        "    // Plasma's translucent menus", 1
     )[0]
+    block += "#endif\n"
     block = block[block.index("#if KWIN_BUILD_X11") :]
     code = (
         r"""
