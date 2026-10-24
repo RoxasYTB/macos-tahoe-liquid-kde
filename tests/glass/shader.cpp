@@ -252,8 +252,8 @@ int main(int argc, char **argv)
         // broad rim or changing the transparent centre, even on black.
         backdrop.fill(Qt::black);
         texture.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, backdrop.constBits());
-        shader.setUniformValue("highlightWidth", 1.5f);
-        shader.setUniformValue("highlightStrength", 0.11f);
+        shader.setUniformValue("highlightWidth", 2.0f);
+        shader.setUniformValue("highlightStrength", 0.14f);
         const auto litDock = render().convertToFormat(QImage::Format_RGBA8888);
         require(qRed(litDock.pixel(96,0)) > 10,
                 QStringLiteral("Dock highlight must reach the silhouette"));
