@@ -109,7 +109,7 @@
              <double>0.25</double>
             </property>
             <property name="decimals">
-             <number>2</number>
+             <number>3</number>
             </property>
            </widget>
           </item>

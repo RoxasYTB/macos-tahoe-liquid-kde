@@ -464,6 +464,19 @@ int main(int argc, char **argv)
                             QStringLiteral("Could not save fine liquid glass capture"));
                     require(lensBlur080.save(directory + "/lens-012-blur-080.png"),
                             QStringLiteral("Could not save stronger liquid glass capture"));
+                } else {
+                    shader.setUniformValue("offset", 0.11f);
+                    const auto lensDefaultBlur = render().convertToFormat(QImage::Format_RGBA8888);
+                    require(lensDefaultBlur.save(directory + "/lens-008-default-blur.png"),
+                            QStringLiteral("Could not save default liquid glass capture"));
+                    shader.setUniformValue("offset", 0.2625f);
+                    const auto lensBlur035 = render().convertToFormat(QImage::Format_RGBA8888);
+                    require(lensBlur035.save(directory + "/lens-008-blur-035.png"),
+                            QStringLiteral("Could not save liquid glass blur capture"));
+                    shader.setUniformValue("offset", 0.3375f);
+                    const auto lensBlur045 = render().convertToFormat(QImage::Format_RGBA8888);
+                    require(lensBlur045.save(directory + "/lens-008-blur-045.png"),
+                            QStringLiteral("Could not save liquid glass blur capture"));
                 }
             }
         }

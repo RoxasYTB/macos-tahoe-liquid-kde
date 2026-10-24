@@ -6,7 +6,7 @@
     <kcfgfile arg="true"/>
     <group name="Effect-liquidglass">
         <entry name="BlurStrength" type="Double">
-            <default>0.22</default>
+            <default>0.525</default>
         </entry>
         <entry name="DarkGradientOverlay" type="Bool">
             <default>false</default>
