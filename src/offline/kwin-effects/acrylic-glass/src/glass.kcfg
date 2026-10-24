@@ -66,7 +66,7 @@ xembedsniproxy</default>
             <default>0.14</default>
         </entry>
         <entry name="Brightness" type="Double">
-            <default>1.0</default>
+            <default>1.08</default>
         </entry>
         <entry name="Contrast" type="Double">
             <default>1.0</default>
