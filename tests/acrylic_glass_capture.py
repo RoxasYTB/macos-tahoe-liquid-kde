@@ -59,10 +59,21 @@ def client(role):
         def paintEvent(self, event):
             painter = QPainter(self)
             if role == "desktop":
-                for y in range(0, self.height(), 16):
-                    for x in range(0, self.width(), 16):
-                        painter.fillRect(x, y, 16, 16,
-                                         QColor("#214263" if (x // 16 + y // 16) % 2 else "#e1c787"))
+                if os.environ.get("MTTKDE_CAPTURE_REFRACTION_PATTERN"):
+                    colors = ("#e63946", "#f1fa8c", "#2a9d8f", "#457b9d",
+                              "#9b5de5", "#f15bb5", "#00bbf9", "#ff9f1c")
+                    for index, color in enumerate(colors):
+                        left = index * self.width() // len(colors)
+                        right = (index + 1) * self.width() // len(colors)
+                        painter.fillRect(left, 0, right - left, self.height(), QColor(color))
+                    painter.setPen(QColor("white"))
+                    for offset in range(-self.height(), self.width(), 24):
+                        painter.drawLine(offset, 0, offset + self.height(), self.height())
+                else:
+                    for y in range(0, self.height(), 16):
+                        for x in range(0, self.width(), 16):
+                            painter.fillRect(x, y, 16, 16,
+                                             QColor("#214263" if (x // 16 + y // 16) % 2 else "#e1c787"))
             elif rounded:
                 painter.fillRect(self.rect(), QColor("#3778aa"))
                 if os.environ.get("MTTKDE_CAPTURE_COMPANION"):
@@ -218,7 +229,7 @@ def inside(output):
         stop(kwin)
 
 
-def run(plugin, output, scale, expected, backend, identity, renderer="software", shader_dir=None, companion=None, desktop_surface=False, squircle_blend=0.0):
+def run(plugin, output, scale, expected, backend, identity, renderer="software", shader_dir=None, companion=None, desktop_surface=False, squircle_blend=0.0, refraction_pattern=False):
     effect = "kwin4_effect_shapecorners" if shader_dir else "liquidglass"
     output.mkdir(parents=True, exist_ok=False)
     for subdir in ("home", "config", "data", "cache"):
@@ -282,7 +293,9 @@ def run(plugin, output, scale, expected, backend, identity, renderer="software",
                LIBGL_ALWAYS_SOFTWARE="1" if renderer == "software" else "0", KWIN_COMPOSE="O2",
                MTTKDE_CAPTURE_DIR=str(output), MTTKDE_CAPTURE_SCALE=str(scale),
                MTTKDE_CAPTURE_BACKEND=backend, MTTKDE_CAPTURE_IDENTITY=identity,
-               MTTKDE_CAPTURE_DESKTOP="1" if desktop_surface else "", MTTKDE_CAPTURE_EFFECT=effect, MTTKDE_CAPTURE_COMPANION="1" if companion else "")
+               MTTKDE_CAPTURE_DESKTOP="1" if desktop_surface else "", MTTKDE_CAPTURE_EFFECT=effect,
+               MTTKDE_CAPTURE_COMPANION="1" if companion else "",
+               MTTKDE_CAPTURE_REFRACTION_PATTERN="1" if refraction_pattern else "")
     command = ["dbus-run-session", "--", sys.executable, str(Path(__file__).resolve()),
                "--inside", str(output)]
     # Screenshot authorization on older KWin uses the desktop-entry cache.
@@ -427,6 +440,7 @@ if __name__ == "__main__":
     parser.add_argument("--squircle-blend", type=float, choices=(0.0, 0.55, 1.0), default=0.0)
     parser.add_argument("--desktop-surface", action="store_true", help="Probe an Xwayland desktop window, including forced inclusions")
     parser.add_argument("--companion-plugin", type=Path, help="Also test Acrylic Glass with Rounded Corners")
+    parser.add_argument("--refraction-pattern", action="store_true", help="Use diagonal lines over color bands behind the test window")
     parser.add_argument("--inside", type=Path)
     parser.add_argument("--session", action="store_true")
     parser.add_argument("--client", choices=("desktop", "vm"))
@@ -440,6 +454,7 @@ if __name__ == "__main__":
     elif args.plugin and args.output:
         run(args.plugin.resolve(), args.output.resolve(), args.scale, args.expect, args.backend, args.identity, args.renderer,
             args.rounded_shaders.resolve() if args.rounded_shaders else None,
-            args.companion_plugin.resolve() if args.companion_plugin else None, args.desktop_surface, args.squircle_blend)
+            args.companion_plugin.resolve() if args.companion_plugin else None, args.desktop_surface,
+            args.squircle_blend, args.refraction_pattern)
     else:
         parser.error("--plugin and --output required")

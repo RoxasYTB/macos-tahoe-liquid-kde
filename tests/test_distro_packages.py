@@ -170,7 +170,44 @@ def _declared_dependency_tokens() -> dict[str, set[str]]:
         ]
         for deps_function in deps_functions:
             for node in ast.walk(deps_function):
+                if (isinstance(node, ast.Assign)
+                        and any(isinstance(target, ast.Name)
+                                and target.id == "dependencies"
+                                for target in node.targets)):
+                    try:
+                        values = ast.literal_eval(node.value)
+                    except (TypeError, ValueError) as exc:
+                        raise AssertionError(
+                            f"{source_path.name}: dependencies assignment on line "
+                            f"{node.lineno} must be a literal list"
+                        ) from exc
+                    assert isinstance(values, (list, tuple)), (
+                        f"{source_path.name}: dependencies assignment on line "
+                        f"{node.lineno} must be a list or tuple"
+                    )
+                    for raw in values:
+                        remember(raw, f"{source_path.name}:{node.lineno}")
+                if (isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "append"
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "dependencies"):
+                    assert len(node.args) == 1, (
+                        f"{source_path.name}: dependency append on line "
+                        f"{node.lineno} must have one literal token"
+                    )
+                    try:
+                        raw = ast.literal_eval(node.args[0])
+                    except (TypeError, ValueError) as exc:
+                        raise AssertionError(
+                            f"{source_path.name}: dependency append on line "
+                            f"{node.lineno} must use a literal token"
+                        ) from exc
+                    remember(raw, f"{source_path.name}:{node.lineno}")
+            for node in ast.walk(deps_function):
                 if not isinstance(node, ast.Return) or node.value is None:
+                    continue
+                if isinstance(node.value, ast.Name) and node.value.id == "dependencies":
                     continue
                 try:
                     expression = node.value
@@ -311,6 +348,7 @@ def test_kwriteconfig6_package_per_distro(
     ("kf6-itemmodels-qml", "kitemmodels", "qml6-module-org-kde-kitemmodels"),
     ("libtaskmanager-cmake", "plasma-workspace", "plasma-workspace-dev"),
     ("kwin-cmake", "kwin", "kwin-dev"),
+    ("kwin-x11-cmake", "kwin-x11", "kwin-x11-dev"),
     ("kdecoration-cmake", "kdecoration", "libkdecorations3-dev"),
 ])
 @pytest.mark.parametrize("distro_id", ["debian", "ubuntu"])
@@ -676,6 +714,7 @@ _TOKENS_WITH_FEDORA_DIVERGENCE = {
     "libnotificationmanager-cmake": "plasma-workspace",
     "libtaskmanager-cmake": "plasma-workspace",
     "kwin-cmake": "kwin",
+    "kwin-x11-cmake": "kwin-x11",
     "kdecoration-cmake": "kdecoration",
 }
 
@@ -814,6 +853,21 @@ def test_plasma_packages_per_distro(
 def test_kwin_cmake_package_per_distro(monkeypatch, distro_id, id_like, expected):
     _force_distro(monkeypatch, distro_id, id_like)
     assert distro.package_for("kwin-cmake", "kwin") == expected
+
+
+@pytest.mark.parametrize("distro_id, id_like, expected", [
+    ("arch",                (),             "kwin-x11"),
+    ("cachyos",             ("arch",),      "kwin-x11"),
+    ("debian",              (),             "kwin-x11-dev"),
+    ("ubuntu",              (),             "kwin-x11-dev"),
+    ("fedora",              (),             "kwin-x11-devel"),
+    ("nobara",              ("fedora",),    "kwin-x11-devel"),
+    ("opensuse",            (),             "kwin6-x11-devel"),
+    ("opensuse-tumbleweed", ("opensuse",),  "kwin6-x11-devel"),
+])
+def test_kwin_x11_cmake_package_per_distro(monkeypatch, distro_id, id_like, expected):
+    _force_distro(monkeypatch, distro_id, id_like)
+    assert distro.package_for("kwin-x11-cmake", "kwin-x11") == expected
 
 
 @pytest.mark.parametrize("distro_id, id_like, expected", [

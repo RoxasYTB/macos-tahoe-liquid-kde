@@ -23,4 +23,25 @@ vec3 lgApplyHighlight(vec3 color, float inside, vec2 outNorm,
     return mix(color, vec3(0.87, 0.93, 1.0), clamp(intensity, 0.0, 0.95));
 }
 
+vec3 lgApplyLensReflection(vec3 color, vec3 surfaceNormal, float strength)
+{
+    vec3 viewDirection = vec3(0.0, 0.0, 1.0);
+    vec3 lightDirection = normalize(vec3(-0.45, -0.55, 1.4));
+    vec3 halfDirection = normalize(lightDirection + viewDirection);
+    float normalView = clamp(dot(surfaceNormal, viewDirection), 0.0, 1.0);
+    float fresnelBase = 1.0 - normalView;
+    float fresnelSquare = fresnelBase * fresnelBase;
+    float fresnel = 0.035 + 0.965 * fresnelSquare * fresnelSquare * fresnelBase;
+    float specularBase = max(dot(surfaceNormal, halfDirection), 0.0);
+    float specularSquare = specularBase * specularBase;
+    float specularFourth = specularSquare * specularSquare;
+    float specularEighth = specularFourth * specularFourth;
+    float specularSixteenth = specularEighth * specularEighth;
+    float specularThirtySecond = specularSixteenth * specularSixteenth;
+    float specular = specularThirtySecond * specularThirtySecond;
+    vec3 environmentTint = mix(vec3(0.72, 0.86, 1.0), clamp(color, 0.0, 1.0), 0.65);
+    vec3 reflectedLight = environmentTint * (0.30 * fresnel + 4.0 * specular);
+    return color + reflectedLight * strength;
+}
+
 #endif

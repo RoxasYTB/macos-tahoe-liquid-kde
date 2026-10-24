@@ -68,16 +68,21 @@ def _write_svg(path: Path, root: ET.Element) -> None:
 
 def apply_plasma_surface_defaults(theme: Path) -> None:
     """Apply to a staged copy of the bundled theme, never user configuration."""
-    if default_wallpaper() != "MacGoldenGate":
+    wallpaper = default_wallpaper()
+    is_dark = theme.name.endswith("-Dark")
+    if wallpaper == "MacTahoe" and is_dark:
+        opacity = "0.0"
+        color = None
+    elif wallpaper == "MacGoldenGate":
+        opacity = "0.60" if not is_dark else "0.01"
+        color = "#ffffff"
+    else:
         return
-    # Plasma popups and tooltips keep the system foreground, just like QMenus.
-    # Dark text needs a light client fill even over a black glass backdrop.
-    opacity = "0.60" if theme.name.endswith("-Light") else "0.01"
     for name in PLASMA_SURFACES:
         path = theme / name
         root = ET.fromstring(gzip.decompress(path.read_bytes()))
-        set_surface_fill(root, _TILES, opacity, "#ffffff")
-        if name == "dialogs/background.svgz" and not any(
+        set_surface_fill(root, _TILES, opacity, color)
+        if wallpaper == "MacGoldenGate" and name == "dialogs/background.svgz" and not any(
                 node.get("id") == "hint-clear-surface" for node in root):
             ET.SubElement(root, f"{{{_SVG}}}rect", {
                 "id": "hint-clear-surface", "width": "1", "height": "1", "opacity": "0",
@@ -86,14 +91,19 @@ def apply_plasma_surface_defaults(theme: Path) -> None:
 
 
 def apply_kvantum_surface_defaults(path: Path) -> None:
-    if default_wallpaper() != "MacGoldenGate":
+    wallpaper = default_wallpaper()
+    is_dark = path.stem.endswith("Dark")
+    if wallpaper == "MacTahoe" and is_dark:
+        opacity = "0.0"
+        color = None
+    elif wallpaper == "MacGoldenGate":
+        opacity = "0.60" if not is_dark else "0.01"
+        color = "#ffffff"
+    else:
         return
     root = ET.parse(path).getroot()
     # The shadow frame also references the menu's surface tiles.
     ids = tuple(node.get("id") for node in root.iter()
                 if node.get("id", "").startswith(("menu-normal", "menu-shadow")))
-    # Native Qt menus retain dark text in light mode. A translucent white
-    # client surface keeps it readable above the compositor's dark gradient.
-    opacity = "0.60" if path.stem == "mac-tahoe-liquid-kde" else "0.01"
-    set_surface_fill(root, ids, opacity, "#ffffff")
+    set_surface_fill(root, ids, opacity, color)
     _write_svg(path, root)

@@ -15,13 +15,21 @@
 #include "scene/item.h"
 
 #include <QList>
+#include <QRegion>
 #include <QStringList>
 
 #include <unordered_map>
 
 namespace KWin {
 
-#if !ACRYLIC_GLASS_KWIN_6_7
+#if defined(GLASS_X11)
+using Region = QRegion;
+using Rect = QRect;
+using RectF = QRectF;
+using RenderView = Output;
+#endif
+
+#if !ACRYLIC_GLASS_WAYLAND_BACKGROUND_EFFECT_V1
 class BlurManagerInterface;
 class ContrastManagerInterface;
 #endif
@@ -145,7 +153,11 @@ public:
     /// Per-window setup before paint: extends the dirty region by the
     /// Kawase expand size so taps near the edges don't sample stale
     /// content from outside.
+#if defined(GLASS_X11)
+    void prePaintWindow(EffectWindow* w, WindowPrePaintData& data ACRYLIC_GLASS_PRESENT_TIME_PARAM) override;
+#else
     void prePaintWindow(RenderView* view, EffectWindow* w, WindowPrePaintData& data ACRYLIC_GLASS_PRESENT_TIME_PARAM) override;
+#endif
 
     /// The main entry point — KWin asks us to paint window ``w``; we
     /// either delegate to ``blur()`` (when blur is wanted) or fall back
@@ -185,7 +197,9 @@ public Q_SLOTS:
 
     /// Drops the per-view BlurRenderData when an output goes away,
     /// preventing dangling GLTexture handles.
+#if !defined(GLASS_X11)
     void slotViewRemoved(KWin::RenderView* view);
+#endif
 
 #if KWIN_BUILD_X11
     /// X11 path: pick up changes to the
@@ -348,6 +362,7 @@ private:
     QVector4D m_gradientBottom;
 
     size_t m_iterationCount; ///< Number of Kawase halve/double passes (drives texture chain length).
+    bool m_nativeResolutionBlur = false; ///< Keep the finest blur level at source resolution.
     float m_offset; ///< Kawase tap offset; 0.0 means "no blur, passthrough".
     float m_dockOffset; ///< Compact Dock pyramid tap spacing, increasing with BlurStrength.
     int m_expandSize; ///< Pixels of dirty-region expansion needed for taps near the rim.
@@ -385,7 +400,7 @@ private:
     // Per-window state + signal bookkeeping
 
     QMap<EffectWindow*, QMetaObject::Connection> windowBlurChangedConnections;
-#if !ACRYLIC_GLASS_KWIN_6_7
+#if !ACRYLIC_GLASS_WAYLAND_BACKGROUND_EFFECT_V1
     // Per-surface contrast/saturation was removed with the 6.7 protocol
     // merge, so there is no contrastChanged signal to track there.
     QMap<EffectWindow*, QMetaObject::Connection> windowContrastChangedConnections;
@@ -393,7 +408,7 @@ private:
     QMap<EffectWindow*, QMetaObject::Connection> windowFrameGeometryChangedConnections;
     std::unordered_map<EffectWindow*, BlurEffectData> m_windows;
 
-#if !ACRYLIC_GLASS_KWIN_6_7
+#if !ACRYLIC_GLASS_WAYLAND_BACKGROUND_EFFECT_V1
     // Wayland protocol managers (lazy-removed on idle). Gone in 6.7,
     // which announces blur through backgroundEffectManager() instead
     // and drops the contrast protocol entirely.

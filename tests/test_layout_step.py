@@ -149,6 +149,22 @@ def test_bundled_layouts_autohide_dock_and_keep_top_bar_visible(
     assert '"dodgewindows"' not in script
 
 
+@pytest.mark.parametrize("relative_path", [
+    "layouts/mac-tahoe.js",
+    "look-and-feel/MacTahoeLiquidKde-Light/contents/layouts/"
+    "org.kde.plasma.desktop-layout.js",
+    "look-and-feel/MacTahoeLiquidKde-Dark/contents/layouts/"
+    "org.kde.plasma.desktop-layout.js",
+])
+def test_mac_dock_has_no_gap_between_launcher_and_running_tasks(offline, relative_path):
+    script = (offline / relative_path).read_text()
+    dock = script.split("var dock = new Panel(\"org.kde.panel\")", 1)[1]
+    launcher_to_tasks = dock.split("var tasks =", 1)[0]
+
+    assert 'var launcher = dock.addWidget("org.kde.mac-tahoe-liquid-kde.launcher")' in launcher_to_tasks
+    assert "org.kde.plasma.marginsseparator" not in launcher_to_tasks
+
+
 def test_panel_background_keeps_light_dark_surface_parity(offline):
     panel = "widgets/panel-background.svgz"
     dark = offline / "plasma-theme/MacTahoeLiquidKde-Dark" / panel

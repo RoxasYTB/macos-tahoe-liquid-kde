@@ -1050,6 +1050,15 @@ _PACKAGE_MAP: dict[str, dict[str, str]] = {
         "centos":   "kwin-devel",
         "opensuse": "kwin6-devel",
     },
+    "kwin-x11-cmake": {
+        "arch":     "kwin-x11",
+        "debian":   "kwin-x11-dev",
+        "ubuntu":   "kwin-x11-dev",
+        "fedora":   "kwin-x11-devel",
+        "rhel":     "kwin-x11-devel",
+        "centos":   "kwin-x11-devel",
+        "opensuse": "kwin6-x11-devel",
+    },
     "kdecoration-cmake": {
         "arch":     "kdecoration",
         "debian":   "libkdecorations3-dev",

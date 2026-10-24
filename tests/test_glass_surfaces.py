@@ -86,14 +86,54 @@ def test_golden_gate_light_plasma_text_is_readable(tmp_path, monkeypatch, backdr
 
 
 @pytest.mark.parametrize("mode", ["Light", "Dark"])
-def test_tahoe_plasma_surfaces_remain_byte_identical(mode, tmp_path, monkeypatch):
+def test_tahoe_dark_plasma_surfaces_remove_black_fill(mode, tmp_path, monkeypatch):
     import glass_surfaces
     monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
     theme = tmp_path / f"MacTahoeLiquidKde-{mode}"
     shutil.copytree(ROOT / theme.name, theme)
     before = {path: path.read_bytes() for path in theme.rglob("*.svgz")}
     glass_surfaces.apply_plasma_surface_defaults(theme)
-    assert all(path.read_bytes() == data for path, data in before.items())
+    if mode == "Light":
+        assert all(path.read_bytes() == data for path, data in before.items())
+        return
+    for name in glass_surfaces.PLASMA_SURFACES:
+        source = ET.fromstring(gzip.decompress(before[theme / name]))
+        updated = ET.fromstring(gzip.decompress((theme / name).read_bytes()))
+
+        def dark_fill_count(root, alpha):
+            count = 0
+            for node in glass_surfaces.surface_nodes(root, glass_surfaces._TILES):
+                style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+                fill = style.get("fill", node.get("fill"))
+                opacity = style.get("opacity", node.get("opacity", "1"))
+                if fill == "#000000" and float(opacity) == alpha:
+                    count += 1
+            return count
+
+        assert dark_fill_count(source, 0.48) > 0, name
+        assert dark_fill_count(updated, 0.0) == dark_fill_count(source, 0.48), name
+
+
+def test_tahoe_dark_kvantum_menus_remove_black_fill(tmp_path, monkeypatch):
+    import glass_surfaces
+    monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
+    source = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.svg"
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    glass_surfaces.apply_kvantum_surface_defaults(target)
+    root = ET.parse(target).getroot()
+    ids = tuple(node.get("id") for node in root.iter()
+                if node.get("id", "").startswith(("menu-normal", "menu-shadow")))
+    fills = []
+    for node in glass_surfaces.surface_nodes(root, ids):
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        fill = style.get("fill", node.get("fill"))
+        opacity = float(style.get("opacity", node.get("opacity", "1")))
+        if fill == "#000000" and opacity in (0.48, 0.55, 0.0):
+            fills.append(opacity)
+    assert fills
+    assert 0.0 in fills
+    assert not any(opacity in (0.48, 0.55) for opacity in fills)
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
@@ -123,15 +163,27 @@ def test_golden_gate_qt_menu_center_and_frame_follow_appearance(mode, tmp_path, 
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
-def test_tahoe_qt_surfaces_remain_byte_identical(mode, tmp_path, monkeypatch):
+def test_tahoe_qt_menu_has_no_dark_client_fill(mode, tmp_path, monkeypatch):
     import glass_surfaces
+    svg = pytest.importorskip("PyQt6.QtSvg")
+    gui = pytest.importorskip("PyQt6.QtGui")
+    core = pytest.importorskip("PyQt6.QtCore")
     monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
     source = ROOT.parent / "kvantum/mac-tahoe-liquid-kde" / f"mac-tahoe-liquid-kde{mode}.svg"
     target = tmp_path / source.name
     shutil.copy2(source, target)
     before = target.read_bytes()
     glass_surfaces.apply_kvantum_surface_defaults(target)
-    assert target.read_bytes() == before
+    if not mode:
+        assert target.read_bytes() == before
+        return
+    renderer = svg.QSvgRenderer(str(target))
+    image = gui.QImage(64, 64, gui.QImage.Format.Format_ARGB32)
+    image.fill(0)
+    painter = gui.QPainter(image)
+    renderer.render(painter, "menu-normal", core.QRectF(0, 0, 64, 64))
+    painter.end()
+    assert image.pixelColor(48, 48).alphaF() == pytest.approx(0.0, abs=.005)
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])

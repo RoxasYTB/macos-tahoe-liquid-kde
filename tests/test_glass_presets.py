@@ -131,6 +131,9 @@ def test_native_glass_shader_pixels(kcm_probe, tmp_path, monkeypatch):
     env.update(HOME=str(tmp_path), XDG_CONFIG_HOME=str(tmp_path / "config"),
                XDG_CONFIG_DIRS=str(tmp_path / "system"), QT_QPA_PLATFORM="xcb",
                LIBGL_ALWAYS_SOFTWARE="1")
+    capture_directory = os.environ.get("MTTKDE_GLASS_SHADER_CAPTURE_DIR")
+    if capture_directory:
+        env["MTTKDE_GLASS_SHADER_CAPTURE_DIR"] = capture_directory
     themes = tmp_path / "themes"
     monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacGoldenGate")
     for mode in ("Light", "Dark"):

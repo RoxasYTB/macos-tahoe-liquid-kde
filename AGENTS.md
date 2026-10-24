@@ -454,11 +454,11 @@ is the guard against that regression returning.
 ## Architecture — Plasma 6.8 Compatibility
 
 Preserve support for 6.6 and 6.7 when changing the 6.8 path. Acrylic Glass
-selects KWin ABI flags independently for Wayland and X11 from each backend's
-SDK version. `GLASS_KWIN_67` covers the blur protocol and paint signature
-changes; `GLASS_KWIN_68` selects the boolean `Effect::drawWindow()` return
-starting at 6.7.90 (the 6.8 beta). Keep these gates independent and use
-`kwin_version_compat.h` for the shared signatures.
+selects KWin ABI flags from each backend's SDK version. `GLASS_KWIN_67` covers
+the Wayland blur protocol and paint signature changes; the Plasma 6.7 X11 SDK
+retains its legacy effect ABI. `GLASS_KWIN_68` selects the boolean
+`Effect::drawWindow()` return starting at 6.7.90 (the 6.8 beta). Keep these
+gates independent and use `kwin_version_compat.h` for shared signatures.
 
 Plasma 6.8 removed `PlasmaCore.WindowThumbnail`. The Dock tooltip retains
 PipeWire previews and uses an icon fallback; do not reintroduce the removed

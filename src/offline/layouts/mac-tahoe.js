@@ -104,8 +104,6 @@ for (var screen = 0; screen < screenCount; screen++) {
     } else if (launcherPresets[dock.screen] !== undefined) {
         launcher.writeConfig("launcherPreset", launcherPresets[dock.screen]);
     }
-    dock.addWidget("org.kde.plasma.marginsseparator");
-
     var tasks = dock.addWidget("org.kde.mac.tahoe.liquid.icontasks");
     tasks.currentConfigGroup = ["General"];
     // Filled by layout.py from the user's existing taskbar pins, applied to

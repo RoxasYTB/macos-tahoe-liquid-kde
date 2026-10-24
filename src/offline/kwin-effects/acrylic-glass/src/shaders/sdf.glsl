@@ -31,7 +31,7 @@ float lgRoundedRectCoverage(float distance)
     return 1.0 - smoothstep(-0.5 * pixelWidth, 0.5 * pixelWidth, distance);
 }
 
-vec2 lgRoundedRectNormal(vec2 p, vec2 halfSize, vec4 cornerRadius)
+vec2 lgRoundedRectNormal(vec2 p, vec2 halfSize, vec4 cornerRadius, float squircleBlend)
 {
     float r = p.x > 0.0
         ? (p.y > 0.0 ? cornerRadius.y : cornerRadius.w)
@@ -39,9 +39,18 @@ vec2 lgRoundedRectNormal(vec2 p, vec2 halfSize, vec4 cornerRadius)
     vec2 q = abs(p) - halfSize + r;
     vec2 qc = max(q, 0.0);
     float ql = length(qc);
-    vec2 n = (ql > 0.001)
-        ? qc / ql
-        : (q.x > q.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+    vec2 cornerNormal = vec2(0.0, 1.0);
+    if (ql > 0.001) {
+        float q4 = dot(qc * qc, qc * qc);
+        vec2 circleGradient = qc / ql;
+        vec2 squircleGradient = vec2(qc.x * qc.x * qc.x, qc.y * qc.y * qc.y)
+            / max(pow(q4, 0.75), 0.001);
+        cornerNormal = normalize(mix(circleGradient, squircleGradient, clamp(squircleBlend, 0.0, 1.0)));
+    }
+    float axisBlendWidth = max(min(r * 0.75, 24.0), 1.0);
+    float axisBlend = smoothstep(-axisBlendWidth, axisBlendWidth, q.x - q.y);
+    vec2 axisNormal = normalize(mix(vec2(0.0, 1.0), vec2(1.0, 0.0), axisBlend));
+    vec2 n = (ql > 0.001) ? cornerNormal : axisNormal;
     return n * sign(p + 0.0001);
 }
 

@@ -6,7 +6,7 @@
     <kcfgfile arg="true"/>
     <group name="Effect-liquidglass">
         <entry name="BlurStrength" type="Double">
-            <default>10.0</default>
+            <default>0.8</default>
         </entry>
         <entry name="DarkGradientOverlay" type="Bool">
             <default>false</default>
@@ -49,13 +49,15 @@ xembedsniproxy</default>
             <default>false</default>
         </entry>
         <entry name="RgbDriftStrength" type="Double">
-            <default>6.0</default>
+            <default>1.0</default>
         </entry>
         <entry name="MagnifyGlassStrength" type="Double">
-            <default>0.02</default>
+            <default>0.12</default>
+            <min>0.0</min>
+            <max>0.12</max>
         </entry>
         <entry name="RefractionWidth" type="Double">
-            <default>18.0</default>
+            <default>64.0</default>
         </entry>
         <entry name="HighlightWidth" type="Double">
             <default>1.5</default>
@@ -70,7 +72,7 @@ xembedsniproxy</default>
             <default>1.0</default>
         </entry>
         <entry name="Saturation" type="Double">
-            <default>1.05</default>
+            <default>0.85</default>
         </entry>
         <!-- Keep persisted IDs stable after retiring Clear (0). -->
         <entry name="MaterialPreset" type="Int">

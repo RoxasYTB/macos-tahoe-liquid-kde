@@ -42,7 +42,7 @@ void main(void)
         discard;
     }
 
-    vec2 outNorm = lgRoundedRectNormal(pos, halfSize, cornerRadius);
+    vec2 outNorm = lgRoundedRectNormal(pos, halfSize, cornerRadius, cornerSquircle);
     float inside = max(-d, 0.0);
 
     float refrBand = max(refractionWidth * (dockSurface ? 1.25 : 1.0), 1.0);
@@ -52,15 +52,19 @@ void main(void)
     float edgeQ = edgeT * edgeT * (dockSurface ? 1.0 : edgeT);
 
     vec2 lensUV = uv;
+    vec3 lensNormal = vec3(0.0, 0.0, 1.0);
     if (magnifyGlassStrength > 0.0) {
         lensUV = dockSurface
             ? lgDockLensUV(uv, outNorm, pos, blurSize, backgroundSize, magnifyGlassStrength, edgeQ)
-            : lgLensUV(uv, magnifyGlassStrength, edgeQ);
+            : lgLensUV(uv, pos, magnifyGlassStrength, refrBand, blurSize, backgroundSize,
+                       cornerRadius, cornerSquircle, lensNormal);
     }
     vec2 texel = halfpixel * 2.0;
     vec3 col;
     if (offset > 0.0) {
-        col = lgGaussianBlur(texUnit, texel, lensUV);
+        col = lgGaussianBlur(texUnit, texel, lensUV, offset);
+    } else if (magnifyGlassStrength > 0.0) {
+        col = LG_SAMPLE(texUnit, clamp(lensUV, 0.0, 1.0)).rgb;
     } else {
         // Pixel-exact passthrough: snap to texel center so GL_LINEAR returns
         // the underlying texel exactly instead of a sub-pixel bilinear blend.
@@ -72,6 +76,9 @@ void main(void)
     }
     if (highlightStrength > 0.0) {
         col = lgApplyHighlight(col, inside, outNorm, highlightWidth, highlightStrength, dockSurface);
+        if (!dockSurface && magnifyGlassStrength > 0.0) {
+            col = lgApplyLensReflection(col, lensNormal, highlightStrength);
+        }
     }
 
     vec4 surface = vec4(col, 1.0) * colorMatrix;

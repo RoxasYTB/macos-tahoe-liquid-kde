@@ -27,6 +27,51 @@ def test_acrylic_glass_only_configures_kcm_when_a_kwin_backend_is_available():
     assert "add_subdirectory(kcm)" in src
 
 
+def test_acrylic_glass_enables_optional_x11_backend():
+    top = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    src = (ROOT / "src/CMakeLists.txt").read_text(encoding="utf-8")
+    assert 'option(GLASS_X11 "Whether to build Acrylic Glass for X11 if present." ON)' in top
+    assert "add_library(liquidglass_x11 MODULE ${liquidglass_SOURCES})" in src
+    assert "target_compile_definitions(liquidglass_x11 PRIVATE GLASS_X11 KWIN_BUILD_X11)" in src
+    assert "kwin-x11/effects/plugins" in src
+    compat = (ROOT / "src/kwin_version_compat.h").read_text(encoding="utf-8")
+    assert "ACRYLIC_GLASS_WAYLAND_BACKGROUND_EFFECT_V1" in compat
+
+
+def test_acrylic_glass_requests_only_present_backend_sdks(monkeypatch):
+    from steps import acrylic_glass
+
+    for binaries, expected in (
+        ({"kwin_wayland"}, {"kwin-cmake:kwin"}),
+        ({"kwin_x11"}, {"kwin-x11-cmake:kwin-x11"}),
+        ({"kwin_wayland", "kwin_x11"},
+         {"kwin-cmake:kwin", "kwin-x11-cmake:kwin-x11"}),
+        (set(), {"kwin-cmake:kwin", "kwin-x11-cmake:kwin-x11"}),
+    ):
+        monkeypatch.setattr(acrylic_glass, "have", lambda binary: binary in binaries)
+        kwin_dependencies = {dependency for dependency in acrylic_glass.deps()
+                             if dependency.startswith(("kwin-cmake:", "kwin-x11-cmake:"))}
+        assert kwin_dependencies == expected
+
+
+def test_acrylic_glass_reports_the_optional_x11_artifact(monkeypatch, tmp_path):
+    from steps import acrylic_glass
+
+    build = tmp_path / "build"
+    monkeypatch.setattr(acrylic_glass, "BUILD", build)
+    wayland = build / "src/liquidglass.so"
+    x11 = build / "src/liquidglass_x11.so"
+    config = build / "src/kcm/kwin_liquidglass_config.so"
+    wayland.parent.mkdir(parents=True)
+    wayland.touch()
+    config.parent.mkdir(parents=True)
+    config.touch()
+
+    assert acrylic_glass.build_artifacts() == [config, wayland]
+    x11.touch()
+    assert acrylic_glass.build_artifacts() == [config, wayland, x11]
+
+
 def test_acrylic_glass_version_floor_matches_preflight():
     """The effect's CMake floor, the preflight runtime floor, and the
     README must all agree on 6.6 — they drifted once (CMake said 6.4
@@ -67,6 +112,65 @@ def test_acrylic_glass_preset_fits_kcm_ranges():
         assert default == (str(value).lower() if isinstance(value, bool) else str(value)), key
 
 
+def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profiles():
+    distort = (ROOT / "src/shaders/distort.glsl").read_text(encoding="utf-8")
+    sdf = (ROOT / "src/shaders/sdf.glsl").read_text(encoding="utf-8")
+    assert "refract(incident, surfaceNormal, 1.0 / refractiveIndex)" in distort
+    assert "float lgLensDistanceAndNormal(vec2 position, vec2 halfSize" in distort
+    assert "float smoothMaximum = lgLensSoftMax(q.x, q.y, width)" in distort
+    assert "outwardNormal = normalize(vec2(xWeight * sign(position.x)" in distort
+    assert "float bezelWidth = min(max(refractionWidth, 1.0), apertureRadius)" in distort
+    assert "float inset = min(max(-signedDistance, 0.0), bezelWidth)" in distort
+    assert "float profilePosition = inset / max(bezelWidth, 1.0)" in distort
+    assert "float profileHeight = profilePosition * profilePosition" in distort
+    assert "3.0 - 2.0 * profilePosition" in distort
+    assert "float profileDerivative = 6.0 * profilePosition * profileRemainder" in distort
+    assert "float slabThickness = depth * 0.35 + height" in distort
+    assert "vec2 heightGradient = -depth * profileDerivative" in distort
+    assert "outwardNormal / max(bezelWidth, 1.0)" in distort
+    assert "out vec3 surfaceNormal" in distort
+    assert "float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.12)" in distort
+    config_ui = (ROOT / "src/kcm/config.ui").read_text(encoding="utf-8")
+    assert '<double>0.12</double>' in config_ui
+    assert "bezelWidth * lensStrength * 3.0" in distort
+    assert "float refractiveIndex = 1.45" in distort
+    highlight = (ROOT / "src/shaders/highlight.glsl").read_text(encoding="utf-8")
+    assert "float fresnel = 0.035 + 0.965 * fresnelSquare * fresnelSquare * fresnelBase" in highlight
+    assert "float specular = specularThirtySecond * specularThirtySecond" in highlight
+    assert "0.30 * fresnel + 4.0 * specular" in highlight
+    assert "mix(vec3(0.72, 0.86, 1.0), clamp(color, 0.0, 1.0), 0.65)" in highlight
+    assert "vec2 bezelOffsetPx = refractedRay.xy / rayDepth * slabThickness * fresnelTransmission" in distort
+    assert "float rimFade = smoothstep(0.0, max(rimFadeWidth, 1.0), inset)" in distort
+    assert "float domeProfile = domeBase * domeBase" in distort
+    assert "vec2 domeGradient = -4.0 * domeBase * normalizedPosition / halfSize" in distort
+    assert "float domeDepth = minSurfaceSize * lensStrength * 2.625" in distort
+    assert "domeDepth * domeGradient" in distort
+    assert "domeOffsetPx" not in distort
+    assert "float maxDisplacementPx = min(max(refractionWidth * 0.8, minSurfaceSize * 0.06)" in distort
+    assert "minSurfaceSize * 0.20" in distort
+    assert "float limitBlend = smoothstep(limitStartPx, maxDisplacementPx, displacementPx)" in distort
+    assert "if (displacementPx > maxDisplacementPx)" not in distort
+    assert "float axisBlend = smoothstep(-axisBlendWidth, axisBlendWidth, q.x - q.y)" in sdf
+    assert "float squircleBlend)" in sdf
+    assert "squircleGradient" in sdf
+    assert "q.x > q.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0)" not in sdf
+    for shader_name in ("glass.glsl", "glass_core.glsl"):
+        shader = (ROOT / "src/shaders" / shader_name).read_text(encoding="utf-8")
+        assert "lgLensUV(uv, pos, magnifyGlassStrength, refrBand, blurSize, backgroundSize," in shader
+
+
+def test_finest_blur_keeps_its_first_kawase_pass_at_native_resolution():
+    effect = (ROOT / "src/effect.cpp").read_text(encoding="utf-8")
+    assert "m_nativeResolutionBlur = blurStrengthD > 0.0 && blurStrengthD <= 2.0" in effect
+    assert "m_offset = blurStrengthValues[0].offset * blurStrengthD" in effect
+    assert "const bool nativeResolutionBlur = !dockSurface && m_nativeResolutionBlur" in effect
+    assert "const QSize firstPassSize = nativeResolutionBlur ? scaledBackgroundRect.size()" in effect
+    assert "if (nativeResolutionBlur && i == 1)" in effect
+    assert "texSize = scaledBackgroundRect.size();" in effect
+    blur = (ROOT / "src/shaders/blur.glsl").read_text(encoding="utf-8")
+    assert "clamp(radiusScale, 0.0, 1.0)" in blur
+
+
 @pytest.mark.parametrize("active,returncode,identity,confirmed", [
     ("liquidglass\n", 0, True, True),
     ("liquidglass\n", 0, False, False),
@@ -84,15 +188,21 @@ def test_acrylic_glass_installs_the_effect_default_blur(monkeypatch, tmp_path, c
     monkeypatch.setattr(acrylic_glass, "default_wallpaper", lambda: edition)
 
     build = tmp_path / "build"
-    for name in ("src/liquidglass.so", "src/kcm/kwin_liquidglass_config.so"):
+    for name in ("src/liquidglass.so", "src/liquidglass_x11.so",
+                 "src/kcm/kwin_liquidglass_config.so"):
         artifact = build / name
         artifact.parent.mkdir(parents=True, exist_ok=True)
         artifact.touch()
     monkeypatch.setattr(acrylic_glass, "BUILD", build)
     monkeypatch.setattr(acrylic_glass, "_plugin_dir", lambda: tmp_path / "plugins")
     monkeypatch.setattr(acrylic_glass, "LEGACY_USER_PLUGIN_DIR", tmp_path / "legacy")
-    monkeypatch.setattr(acrylic_glass, "sudo_install_file", lambda *args, **kwargs: True)
-    monkeypatch.setattr(acrylic_glass, "_activate_effect_binary", lambda *args: True)
+    installed_files = []
+    activated_links = []
+    monkeypatch.setattr(acrylic_glass, "sudo_install_file",
+                        lambda source, destination, *args, **kwargs:
+                        installed_files.append(destination) or True)
+    monkeypatch.setattr(acrylic_glass, "_activate_effect_binary",
+                        lambda source, destination: activated_links.append(destination) or True)
     monkeypatch.setattr(acrylic_glass, "_running_build_matches", lambda: identity)
     monkeypatch.setattr(acrylic_glass, "_running_plugin_matches", lambda path: None)
     monkeypatch.setattr(acrylic_glass, "qdbus_call", lambda *args: True)
@@ -108,6 +218,8 @@ def test_acrylic_glass_installs_the_effect_default_blur(monkeypatch, tmp_path, c
 
     acrylic_glass.install()
     output = capsys.readouterr().out
+    assert tmp_path / "plugins/kwin-x11/effects/plugins/liquidglass.so" in activated_links
+    assert tmp_path / "plugins/kwin-x11/effects/configs/kwin_liquidglass_config.so" in installed_files
     assert ("Acrylic Glass loaded" in output) == confirmed
     if returncode != 0 or "liquidglass" not in active.splitlines():
         assert "activation was not confirmed" in output
@@ -120,7 +232,7 @@ def test_acrylic_glass_installs_the_effect_default_blur(monkeypatch, tmp_path, c
     entry = config.find(".//{*}entry[@name='BlurStrength']/{*}default")
     assert entry is not None
     default = entry.text
-    assert default == "10.0"
+    assert default == "0.8"
     blur_writes = [args for args in writes if "BlurStrength" in args]
     assert blur_writes == [("--file", "kwinrc", "--group", "Effect-liquidglass",
                            "--key", "BlurStrength", default)]
@@ -143,7 +255,10 @@ def test_golden_gate_shares_tahoe_optics_with_its_own_gradient(monkeypatch):
                            "GradientTopOpacity", "GradientBottomOpacity"}
     schema = ET.parse(ROOT / "src/glass.kcfg").getroot()
     rgb_default = schema.find(".//{*}entry[@name='RgbDriftStrength']/{*}default").text
+    lens_default = schema.find(".//{*}entry[@name='MagnifyGlassStrength']/{*}default").text
     assert float(golden["RgbDriftStrength"]) == float(rgb_default)
+    assert float(tahoe["MagnifyGlassStrength"]) == float(golden["MagnifyGlassStrength"])
+    assert float(tahoe["MagnifyGlassStrength"]) == float(lens_default) == 0.12
 
 
 @pytest.mark.parametrize("saved", [None, "true", "false", ""])
@@ -273,11 +388,11 @@ def test_acrylic_glass_selects_abi_per_backend(tmp_path):
     end = source.index("find_package(KDecoration3 REQUIRED)", start)
     # Run the actual discovery/version logic with synthetic SDK versions.
     for wayland, x11, expected in [
-        ("6.6.5", "", "OFF;OFF;OFF;OFF"),
-        ("6.7.4", "", "ON;OFF;OFF;OFF"),
-        ("6.7.90", "", "ON;OFF;ON;OFF"),
-        ("6.8.0", "6.7.4", "ON;ON;ON;OFF"),
-        ("", "6.8.0", "OFF;ON;OFF;ON"),
+        ("6.6.5", "", "OFF;OFF;OFF"),
+        ("6.7.4", "", "ON;OFF;OFF"),
+        ("6.7.90", "", "ON;ON;OFF"),
+        ("6.8.0", "6.7.4", "ON;ON;OFF"),
+        ("", "6.8.0", "OFF;OFF;ON"),
     ]:
         script = tmp_path / "versions.cmake"
         result = tmp_path / "result"
@@ -293,7 +408,7 @@ def test_acrylic_glass_selects_abi_per_backend(tmp_path):
             f'set(KWinX11_VERSION "{x11}")\n'
             + source[start:end]
             + f'file(WRITE "{result}" "${{GLASS_KWIN_67_WAYLAND}};'
-              '${GLASS_KWIN_67_X11};${GLASS_KWIN_68_WAYLAND};'
+              '${GLASS_KWIN_68_WAYLAND};'
               '${GLASS_KWIN_68_X11}")\n')
         proc = subprocess.run(["cmake", "-P", str(script)],
                               capture_output=True, text=True)
