@@ -176,6 +176,9 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
         outline = next(node for node in root.iter() if node.get("id") == node_id)
         outline_style = dict(part.split(":", 1) for part in outline.get("style", "").split(";") if ":" in part)
         assert float(outline_style["opacity"]) == 0.0
+    installed = target.read_bytes()
+    glass_surfaces.apply_kvantum_surface_defaults(target)
+    assert target.read_bytes() == installed
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
