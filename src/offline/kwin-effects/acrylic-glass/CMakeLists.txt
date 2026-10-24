@@ -70,7 +70,7 @@ find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS
 find_package(epoxy REQUIRED)
 
 find_package(X11 REQUIRED)
-find_package(XCB REQUIRED COMPONENTS XCB)
+find_package(XCB REQUIRED COMPONENTS XCB RENDER)
 
 if(GLASS_WAYLAND)
     find_package(KWin COMPONENTS

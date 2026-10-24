@@ -105,6 +105,7 @@ if(GLASS_X11)
         KF6::ConfigGui
         KWinX11::kwin
         XCB::XCB
+        XCB::RENDER
     )
     target_compile_definitions(liquidglass_x11 PRIVATE GLASS_X11 KWIN_BUILD_X11)
     # KWin's X11 SDK retains the legacy effect ABI on Plasma 6.7, unlike

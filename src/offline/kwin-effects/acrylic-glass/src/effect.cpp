@@ -38,6 +38,7 @@
 
 #if KWIN_BUILD_X11
 #include "utils/xcbutils.h"
+#include <xcb/render.h>
 #endif
 
 #include <QGuiApplication>
@@ -114,6 +115,46 @@ inline QRect agSnapToPixelGrid(const QRectF& rect)
 
 /// X11 atom name we listen to for the blur-behind property protocol.
 static const QByteArray s_blurAtomName = QByteArrayLiteral("_KDE_NET_WM_BLUR_BEHIND_REGION");
+
+#if KWIN_BUILD_X11
+static bool hasAlphaVisual(xcb_connection_t* connection, xcb_visualid_t visual)
+{
+    static QHash<xcb_visualid_t, bool> cache;
+    if (const auto it = cache.constFind(visual); it != cache.cend()) {
+        return it.value();
+    }
+    const auto formatsCookie = xcb_render_query_pict_formats(connection);
+    const std::unique_ptr<xcb_render_query_pict_formats_reply_t, decltype(&std::free)> formats(
+        xcb_render_query_pict_formats_reply(connection, formatsCookie, nullptr), &std::free);
+    if (!formats) {
+        return false;
+    }
+    bool alphaVisual = false;
+    auto screens = xcb_render_query_pict_formats_screens_iterator(formats.get());
+    for (; screens.rem && !alphaVisual; xcb_render_pictscreen_next(&screens)) {
+        auto depths = xcb_render_pictscreen_depths_iterator(screens.data);
+        for (; depths.rem && !alphaVisual; xcb_render_pictdepth_next(&depths)) {
+            auto visuals = xcb_render_pictdepth_visuals_iterator(depths.data);
+            for (; visuals.rem; xcb_render_pictvisual_next(&visuals)) {
+                if (visuals.data->visual != visual) {
+                    continue;
+                }
+                auto pictFormats = xcb_render_query_pict_formats_formats_iterator(formats.get());
+                for (; pictFormats.rem; xcb_render_pictforminfo_next(&pictFormats)) {
+                    if (pictFormats.data->id == visuals.data->format
+                        && pictFormats.data->direct.alpha_mask != 0) {
+                        alphaVisual = true;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    cache.insert(visual, alphaVisual);
+    return alphaVisual;
+}
+#endif
 
 // Static singleton storage (definitions live here, declarations in .h).
 // The protocol-manager singletons only exist on the pre-6.7 API; 6.7
@@ -539,6 +580,22 @@ void BlurEffect::updateBlurRegion(EffectWindow* w)
             }
             // Invalid sizes must not authorize a full-window fallback.
             if (reply->value_len == 0 || !region.isEmpty()) content = region;
+        }
+    }
+
+    // Plasma's translucent menus do not publish the legacy blur-region
+    // property on X11. Only synthesize a full-client region for alpha
+    // visuals belonging to plasmashell popup windows; opaque menus and
+    // application popups keep their existing rendering path.
+    if (!content.has_value() && effects->xcbConnection() && w->windowId()
+        && w->window()->resourceClass() == QStringLiteral("plasmashell")
+        && (w->isMenu() || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup())) {
+        const auto attributesCookie = xcb_get_window_attributes(
+            effects->xcbConnection(), xcb_window_t(w->windowId()));
+        const std::unique_ptr<xcb_get_window_attributes_reply_t, decltype(&std::free)> attributes(
+            xcb_get_window_attributes_reply(effects->xcbConnection(), attributesCookie, nullptr), &std::free);
+        if (attributes && hasAlphaVisual(effects->xcbConnection(), attributes->visual)) {
+            content = Region(w->contentsRect().toRect());
         }
     }
 #endif
