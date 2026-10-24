@@ -142,7 +142,8 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "vec2 bezelOffsetPx = refractedRay.xy / rayDepth * slabThickness * fresnelTransmission" in distort
     assert "float rimFade = smoothstep(0.0, max(rimFadeWidth, 1.0), inset)" in distort
     assert "float domeProfile = domeBase * domeBase" in distort
-    assert "vec2 domeGradient = -4.0 * domeBase * normalizedPosition / halfSize" in distort
+    assert "float domeBase = max(1.0 - 0.72 * dot(normalizedPosition, normalizedPosition), 0.0)" in distort
+    assert "vec2 domeGradient = -2.88 * domeBase * normalizedPosition / halfSize" in distort
     assert "float domeDepth = minSurfaceSize * lensStrength * 2.625" in distort
     assert "domeDepth * domeGradient" in distort
     assert "domeOffsetPx" not in distort
@@ -234,7 +235,7 @@ def test_acrylic_glass_installs_the_effect_default_blur(monkeypatch, tmp_path, c
     entry = config.find(".//{*}entry[@name='BlurStrength']/{*}default")
     assert entry is not None
     default = entry.text
-    assert default == "0.8"
+    assert default == "0.55"
     blur_writes = [args for args in writes if "BlurStrength" in args]
     assert blur_writes == [("--file", "kwinrc", "--group", "Effect-liquidglass",
                            "--key", "BlurStrength", default)]

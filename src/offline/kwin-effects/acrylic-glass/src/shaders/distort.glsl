@@ -70,9 +70,9 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     float profileDerivative = 6.0 * profilePosition * profileRemainder;
     float minSurfaceSize = min(surfaceSize.x, surfaceSize.y);
     vec2 normalizedPosition = surfacePosition / halfSize;
-    float domeBase = max(1.0 - dot(normalizedPosition, normalizedPosition), 0.0);
+    float domeBase = max(1.0 - 0.72 * dot(normalizedPosition, normalizedPosition), 0.0);
     float domeProfile = domeBase * domeBase;
-    vec2 domeGradient = -4.0 * domeBase * normalizedPosition / halfSize;
+    vec2 domeGradient = -2.88 * domeBase * normalizedPosition / halfSize;
     float domeDepth = minSurfaceSize * lensStrength * 2.625;
     float height = depth * profileHeight + domeDepth * domeProfile;
     vec2 heightGradient = -depth * profileDerivative
