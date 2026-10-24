@@ -40,7 +40,7 @@ vec3 lgApplyLensReflection(vec3 color, vec3 surfaceNormal, float strength)
     float specularThirtySecond = specularSixteenth * specularSixteenth;
     float specular = specularThirtySecond * specularThirtySecond;
     vec3 environmentTint = mix(vec3(0.72, 0.86, 1.0), clamp(color, 0.0, 1.0), 0.65);
-    vec3 reflectedLight = environmentTint * (0.30 * fresnel + 4.0 * specular);
+    vec3 reflectedLight = environmentTint * (0.30 * fresnel + 2.0 * specular);
     return color + reflectedLight * strength;
 }
 
