@@ -350,7 +350,8 @@ private:
 
     // kcfg-driven knobs (kept in sync by reconfigure)
 
-    QMatrix4x4 m_colorMatrix; ///< Saturation × contrast × brightness for the onscreen pass.
+    QMatrix4x4 m_colorMatrix; ///< Color transform for regular glass surfaces.
+    QMatrix4x4 m_popupColorMatrix; ///< Color transform for popup glass surfaces.
     float m_rgbDriftStrength; ///< Chromatic-aberration band intensity at the rim.
     float m_magnifyGlassStrength; ///< Rim-only inward UV pull, simulates lens thickness.
     float m_refractionWidth; ///< Pixel width of the rim-concentrated effect band.

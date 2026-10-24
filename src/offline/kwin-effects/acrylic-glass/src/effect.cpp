@@ -478,6 +478,8 @@ void BlurEffect::reconfigure(ReconfigureFlags flags)
     // Per-pass tuning knobs.
     m_noiseStrength = BlurConfig::noiseStrength();
     m_colorMatrix = colorTransformMatrix(BlurConfig::saturation(), BlurConfig::contrast(), BlurConfig::brightness());
+    m_popupColorMatrix = colorTransformMatrix(BlurConfig::saturation(), BlurConfig::contrast(),
+                                               BlurConfig::brightness() * BlurConfig::popupBrightness());
     m_rgbDriftStrength = static_cast<float>(BlurConfig::rgbDriftStrength());
     m_magnifyGlassStrength = static_cast<float>(BlurConfig::magnifyGlassStrength());
     m_refractionWidth = static_cast<float>(BlurConfig::refractionWidth());
@@ -1493,7 +1495,9 @@ void BlurEffect::blur(
     // it with kcfg values keyed by window type (dock / popup / normal).
     // Maximized full-screen apps keep sharp corners unless the user
     // opts in via RoundCornersOfMaximizedWindows.
-    const QMatrix4x4& colorMatrix = m_colorMatrix;
+    const bool popupSurface = w->isTooltip() || w->isPopupWindow() || w->isMenu()
+        || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
+    const QMatrix4x4& colorMatrix = popupSurface ? m_popupColorMatrix : m_colorMatrix;
     const float modulation = opacity * opacity;
 
     BorderRadius cornerRadius = w->window()->borderRadius();
