@@ -78,8 +78,11 @@ def clear_menu_client_fill(root: ET.Element) -> None:
             node.set("opacity", "0.0")
         if style:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
+    soften_dark_surface_rim(root, menu_tiles)
 
-    for node in surface_nodes(root, menu_tiles):
+
+def soften_dark_surface_rim(root: ET.Element, ids: tuple[str, ...]) -> None:
+    for node in surface_nodes(root, ids):
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = float(style.get("opacity", node.get("opacity", "1")))
@@ -116,6 +119,8 @@ def apply_plasma_surface_defaults(theme: Path) -> None:
         path = theme / name
         root = ET.fromstring(gzip.decompress(path.read_bytes()))
         set_surface_fill(root, _TILES, opacity, color)
+        if wallpaper == "MacTahoe" and is_dark and name == "widgets/background.svgz":
+            soften_dark_surface_rim(root, _TILES)
         if wallpaper == "MacGoldenGate" and name == "dialogs/background.svgz" and not any(
                 node.get("id") == "hint-clear-surface" for node in root):
             ET.SubElement(root, f"{{{_SVG}}}rect", {

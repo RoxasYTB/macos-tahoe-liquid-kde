@@ -136,6 +136,13 @@ def test_tahoe_dark_plasma_surfaces_remove_black_fill(mode, tmp_path, monkeypatc
         source_fill_count = sum(dark_fill_count(source, alpha) for alpha in (0.48, 0.55, 1.0))
         assert source_fill_count > 0, name
         assert dark_fill_count(updated, 0.0) == source_fill_count, name
+        if name == "widgets/background.svgz":
+            dark_rim = next(node for node in updated.iter() if node.get("id") == "rect1259")
+            dark_rim_style = dict(part.split(":", 1) for part in dark_rim.get("style", "").split(";") if ":" in part)
+            assert float(dark_rim_style["opacity"]) == pytest.approx(.06)
+            light_rim = next(node for node in updated.iter() if node.get("id") == "rect1018")
+            light_rim_style = dict(part.split(":", 1) for part in light_rim.get("style", "").split(";") if ":" in part)
+            assert float(light_rim_style["opacity"]) == pytest.approx(.22)
 
 
 def test_tahoe_dark_kvantum_menus_remove_black_fill(tmp_path, monkeypatch):
