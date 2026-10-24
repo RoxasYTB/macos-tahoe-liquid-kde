@@ -86,12 +86,12 @@ def soften_dark_surface_rim(root: ET.Element, ids: tuple[str, ...]) -> None:
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = float(style.get("opacity", node.get("opacity", "1")))
-        if fill != "#000000" or alpha not in (0.06, 0.18):
+        if fill != "#000000" or alpha not in (0.015, 0.06, 0.18):
             continue
         if "opacity" in style:
-            style["opacity"] = "0.015"
+            style["opacity"] = "0.0"
         else:
-            node.set("opacity", "0.015")
+            node.set("opacity", "0.0")
         if style:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
@@ -108,8 +108,8 @@ def soften_menu_frame(root: ET.Element) -> None:
             "url(#linearGradient3)", "url(#radialGradient5)") and alpha in (0.035, 0.12, 0.5)
         if dark_shadow:
             value = "0.0"
-        elif fill == "#000000" and alpha == 0.06:
-            value = "0.015"
+        elif fill == "#000000" and alpha in (0.015, 0.06):
+            value = "0.0"
         elif fill == "#ffffff" and alpha == 0.22:
             value = "0.14"
         else:
