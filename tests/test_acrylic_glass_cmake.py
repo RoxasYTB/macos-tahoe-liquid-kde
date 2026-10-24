@@ -235,7 +235,7 @@ def test_acrylic_glass_installs_the_effect_default_blur(monkeypatch, tmp_path, c
     entry = config.find(".//{*}entry[@name='BlurStrength']/{*}default")
     assert entry is not None
     default = entry.text
-    assert default == "0.35"
+    assert default == "0.22"
     blur_writes = [args for args in writes if "BlurStrength" in args]
     assert blur_writes == [("--file", "kwinrc", "--group", "Effect-liquidglass",
                            "--key", "BlurStrength", default)]
@@ -261,7 +261,9 @@ def test_golden_gate_shares_tahoe_optics_with_its_own_gradient(monkeypatch):
     lens_default = schema.find(".//{*}entry[@name='MagnifyGlassStrength']/{*}default").text
     assert float(golden["RgbDriftStrength"]) == float(rgb_default)
     assert float(tahoe["MagnifyGlassStrength"]) == float(golden["MagnifyGlassStrength"])
-    assert float(tahoe["MagnifyGlassStrength"]) == float(lens_default) == 0.12
+    assert float(tahoe["BlurStrength"]) == 0.22
+    assert float(tahoe["MagnifyGlassStrength"]) == float(lens_default) == 0.065
+    assert float(tahoe["RefractionWidth"]) == 42.0
 
 
 @pytest.mark.parametrize("saved", [None, "true", "false", ""])
