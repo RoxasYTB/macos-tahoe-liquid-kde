@@ -432,6 +432,51 @@ int main(int argc, char **argv)
         shader.setUniformValue("magnifyGlassStrength", 0.0f);
         shader.setUniformValue("offset", 0.0f);
         const auto flatPattern = render().convertToFormat(QImage::Format_RGBA8888);
+        auto normalizedLensDifference = [&](const QImage &candidate, const QImage &flat) {
+            double difference = 0.0;
+            for (int y = 24; y < height - 24; ++y) {
+                for (int x = 24; x < width - 24; ++x) {
+                    const QRgb sample = candidate.pixel(x, y);
+                    const QRgb baseline = flat.pixel(x, y);
+                    const int alpha = qAlpha(sample);
+                    const int baselineAlpha = qAlpha(baseline);
+                    if (alpha == 0 || baselineAlpha == 0) {
+                        continue;
+                    }
+                    difference += std::abs(qRed(sample) * 255.0 / alpha
+                                           - qRed(baseline) * 255.0 / baselineAlpha);
+                    difference += std::abs(qGreen(sample) * 255.0 / alpha
+                                           - qGreen(baseline) * 255.0 / baselineAlpha);
+                    difference += std::abs(qBlue(sample) * 255.0 / alpha
+                                           - qBlue(baseline) * 255.0 / baselineAlpha);
+                }
+            }
+            return difference;
+        };
+        QImage transitionBackdrop(width, height, QImage::Format_RGBA8888);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                transitionBackdrop.setPixelColor(x, y, QColor(x * 255 / (width - 1),
+                                                               y * 255 / (height - 1), 128));
+            }
+        }
+        texture.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, transitionBackdrop.constBits());
+        const auto flatTransitionGlass = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("magnifyGlassStrength", 0.08f);
+        const auto fullyFormedLens = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("opacity", 0.25f);
+        const auto formingLens = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("magnifyGlassStrength", 0.0f);
+        const auto flatFormingGlass = render().convertToFormat(QImage::Format_RGBA8888);
+        const double formingDifference = normalizedLensDifference(formingLens, flatFormingGlass);
+        const double fullDifference = normalizedLensDifference(fullyFormedLens, flatTransitionGlass);
+        const double transitionDifference = normalizedLensDifference(formingLens, fullyFormedLens);
+        require(formingDifference > 0.0 && fullDifference > 0.0 && transitionDifference > 1000.0,
+                QStringLiteral("Lens refraction must form progressively with compositor opacity (forming=%1 full=%2 transition=%3)")
+                    .arg(formingDifference).arg(fullDifference).arg(transitionDifference));
+        shader.setUniformValue("opacity", 1.0f);
+        shader.setUniformValue("magnifyGlassStrength", 0.0f);
+        texture.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, pattern.constBits());
         shader.setUniformValue("offset", 0.2625f);
         const auto blur035Pattern = render().convertToFormat(QImage::Format_RGBA8888);
         shader.setUniformValue("offset", 0.3375f);

@@ -44,6 +44,10 @@ void main(void)
 
     vec2 outNorm = lgRoundedRectNormal(pos, halfSize, cornerRadius, cornerSquircle);
     float inside = max(-d, 0.0);
+    float materialPresence = sqrt(clamp(opacity, 0.0, 1.0));
+    float lensStrength = magnifyGlassStrength * materialPresence;
+    float driftStrength = rgbDriftStrength * materialPresence;
+    float reflectionStrength = highlightStrength * materialPresence;
 
     float refrBand = max(refractionWidth * (dockSurface ? 1.25 : 1.0), 1.0);
     float edgeT = smoothstep(-refrBand, 0.0, d);
@@ -53,17 +57,17 @@ void main(void)
 
     vec2 lensUV = uv;
     vec3 lensNormal = vec3(0.0, 0.0, 1.0);
-    if (magnifyGlassStrength > 0.0) {
+    if (lensStrength > 0.0) {
         lensUV = dockSurface
-            ? lgDockLensUV(uv, outNorm, pos, blurSize, backgroundSize, magnifyGlassStrength, edgeQ)
-            : lgLensUV(uv, pos, magnifyGlassStrength, refrBand, blurSize, backgroundSize,
+            ? lgDockLensUV(uv, outNorm, pos, blurSize, backgroundSize, lensStrength, edgeQ)
+            : lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize,
                        cornerRadius, cornerSquircle, lensNormal);
     }
     vec2 texel = halfpixel * 2.0;
     vec3 col;
     if (offset > 0.0) {
         col = lgGaussianBlur(texUnit, texel, lensUV, offset);
-    } else if (magnifyGlassStrength > 0.0) {
+    } else if (lensStrength > 0.0) {
         col = LG_SAMPLE(texUnit, clamp(lensUV, 0.0, 1.0)).rgb;
     } else {
         // Pixel-exact passthrough: snap to texel center so GL_LINEAR returns
@@ -71,14 +75,14 @@ void main(void)
         vec2 snapped = (floor(lensUV / texel) + 0.5) * texel;
         col = LG_SAMPLE(texUnit, clamp(snapped, 0.0, 1.0)).rgb;
     }
-    if (rgbDriftStrength > 0.0) {
-        col = lgApplyRgbDrift(texUnit, col, lensUV, outNorm, blurSize, rgbDriftStrength, edgeQ);
+    if (driftStrength > 0.0) {
+        col = lgApplyRgbDrift(texUnit, col, lensUV, outNorm, blurSize, driftStrength, edgeQ);
     }
-    if (highlightStrength > 0.0) {
+    if (reflectionStrength > 0.0) {
         col = lgApplyHighlight(col, inside, outNorm, pos, blurSize,
-                               highlightWidth, highlightStrength, dockSurface);
-        if (!dockSurface && magnifyGlassStrength > 0.0) {
-            col = lgApplyLensReflection(col, lensNormal, highlightStrength);
+                               highlightWidth, reflectionStrength, dockSurface);
+        if (!dockSurface && lensStrength > 0.0) {
+            col = lgApplyLensReflection(col, lensNormal, reflectionStrength);
         }
     }
 
