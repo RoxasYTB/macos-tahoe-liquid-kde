@@ -75,7 +75,8 @@ void main(void)
         col = lgApplyRgbDrift(texUnit, col, lensUV, outNorm, blurSize, rgbDriftStrength, edgeQ);
     }
     if (highlightStrength > 0.0) {
-        col = lgApplyHighlight(col, inside, outNorm, highlightWidth, highlightStrength, dockSurface);
+        col = lgApplyHighlight(col, inside, outNorm, pos, blurSize,
+                               highlightWidth, highlightStrength, dockSurface);
         if (!dockSurface && magnifyGlassStrength > 0.0) {
             col = lgApplyLensReflection(col, lensNormal, highlightStrength);
         }

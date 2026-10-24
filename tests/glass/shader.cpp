@@ -261,8 +261,18 @@ int main(int argc, char **argv)
                 QStringLiteral("Dock highlight must reach the silhouette"));
         require(qRed(litDock.pixel(96,0)) > qRed(litDock.pixel(96,127)),
                 QStringLiteral("Dock upper reflection must be brighter than the lower edge"));
+        require(qRed(litDock.pixel(96,0)) > qRed(litDock.pixel(32,0)) + 20
+                    && qRed(litDock.pixel(96,0)) > qRed(litDock.pixel(160,0)) + 20,
+                QStringLiteral("Dock reflection must form a soft glint, not a straight horizontal stripe"));
         require(qRed(litDock.pixel(96,5)) <= 1 && qRed(litDock.pixel(96,64)) == 0,
                 QStringLiteral("Dock reflection must stay narrow and leave the centre clear"));
+        const QByteArray dockCaptureDirectory = qgetenv("MTTKDE_GLASS_SHADER_CAPTURE_DIR");
+        if (!dockCaptureDirectory.isEmpty()) {
+            const QString directory = QString::fromLocal8Bit(dockCaptureDirectory);
+            require(QDir().mkpath(directory), QStringLiteral("Could not create dock shader capture directory"));
+            require(litDock.save(directory + "/dock-glint.png"),
+                    QStringLiteral("Could not save Dock reflection capture"));
+        }
         shader.setUniformValue("highlightStrength", 0.0f);
         require(qRed(render().pixel(96,0)) == 0,
                 QStringLiteral("Dock must respect disabled highlights"));
