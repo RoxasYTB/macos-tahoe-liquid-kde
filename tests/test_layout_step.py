@@ -138,7 +138,7 @@ plugin=org.kde.plasma.marginsseparator
     assert "[Containments][4][Applets][5]" in result
     assert "AppletOrder=5\n" in result
     assert "[Containments][6][Applets][8]" not in result
-    assert "org.kde.mac.tahoe.liquid.icontasks" in evaluated[0]
+    assert "panels().forEach" in evaluated[0]
     assert "widget.remove()" in evaluated[0]
 
 

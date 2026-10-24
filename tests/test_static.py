@@ -564,7 +564,7 @@ def test_kvantum_mode_profiles_have_matching_surface_colors(offline, monkeypatch
     kv = offline / "kvantum/mac-tahoe-liquid-kde"
     expected = {
         "light": ("mac-tahoe-liquid-kde", "#f5f5f58C"),
-        "dark": ("mac-tahoe-liquid-kdeDark", "#afc0d638"),
+        "dark": ("mac-tahoe-liquid-kdeDark", "#aebdd340"),
     }
     for mode, (profile, surface) in expected.items():
         assert theme_switch._kvantum_theme(mode) == profile

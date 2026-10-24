@@ -349,12 +349,10 @@ def _remove_dock_margin_separators() -> bool:
         changed = True
     if changed:
         appletsrc.write_text(text, encoding="utf-8")
+    if changed:
         _evaluate_layout_script(
             "panels().forEach(function (panel) { "
-            "var isDock = panel.widgetIds.some(function (id) { "
-            "var widget = panel.widgetById(id); "
-            "return widget && widget.type === 'org.kde.mac.tahoe.liquid.icontasks'; "
-            "}); if (isDock) panel.widgetIds.slice().forEach(function (id) { "
+            "panel.widgetIds.slice().forEach(function (id) { "
             "var widget = panel.widgetById(id); "
             "if (widget && widget.type === 'org.kde.plasma.marginsseparator') widget.remove(); "
             "}); });"

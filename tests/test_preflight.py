@@ -234,6 +234,8 @@ def test_layout_js_references_real_plasmoid_ids():
     otherwise the layout script silently leaves a hole in the panel
     when plasmashell can't find the package."""
     layout_js = (OFFLINE_DIR / "layouts/mac-tahoe.js").read_text()
+    assert 'bar.addWidget("org.kde.plasma.marginsseparator")' not in layout_js
+    assert 'dock.addWidget("org.kde.plasma.marginsseparator")' not in layout_js
     assert 'tasks.writeConfig("separateLaunchers", false)' in layout_js
     taskmanager_qml = (
         OFFLINE_DIR

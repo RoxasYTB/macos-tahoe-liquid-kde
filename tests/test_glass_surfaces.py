@@ -21,13 +21,13 @@ def test_dark_kvantum_menu_surfaces_use_reduced_black_tint():
         if "=" in line:
             key, value = line.split("=", 1)
             colors[key] = value
-    assert colors["window.color"] == "#afc0d638"
-    assert colors["inactive.window.color"] == "#afc0d638"
-    assert colors["base.color"] == "#afc0d638"
-    assert colors["inactive.base.color"] == "#afc0d638"
-    assert colors["alt.base.color"] == "#bdcae03b"
-    assert colors["inactive.alt.base.color"] == "#aebdd338"
-    assert colors["tooltip.base.color"] == "#b7c8df44"
+    assert colors["window.color"] == "#aebdd340"
+    assert colors["inactive.window.color"] == "#aebdd340"
+    assert colors["base.color"] == "#aebdd340"
+    assert colors["inactive.base.color"] == "#aebdd340"
+    assert colors["alt.base.color"] == "#bdcae044"
+    assert colors["inactive.alt.base.color"] == "#b7c5d940"
+    assert colors["tooltip.base.color"] == "#b7c8df4c"
 
 
 @pytest.mark.parametrize("mode", ["Light", "Dark"])
