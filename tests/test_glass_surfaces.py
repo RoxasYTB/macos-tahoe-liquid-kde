@@ -227,6 +227,24 @@ def test_tahoe_qt_menu_has_no_dark_client_fill(mode, tmp_path, monkeypatch):
     assert image.pixelColor(48, 48).alphaF() == pytest.approx(0.0, abs=.005)
 
 
+def test_tahoe_dark_qt_menu_tiles_remove_heavy_black_frame(tmp_path, monkeypatch):
+    import glass_surfaces
+    monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
+    source = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.svg"
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    glass_surfaces.apply_kvantum_surface_defaults(target)
+    root = ET.parse(target).getroot()
+    for node_id in ("path9036", "path3597"):
+        node = next(node for node in root.iter() if node.get("id") == node_id)
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        assert float(style["opacity"]) == pytest.approx(.12)
+        assert float(style["fill-opacity"]) == pytest.approx(1.0)
+    left = next(node for node in root.iter() if node.get("id") == "menu-normal-left")
+    left_style = dict(part.split(":", 1) for part in left[0].get("style", "").split(";") if ":" in part)
+    assert float(left_style["opacity"]) < .2
+
+
 @pytest.mark.parametrize("mode", ["", "Dark"])
 def test_golden_gate_menu_fix_preserves_other_surfaces(mode, tmp_path, monkeypatch):
     import glass_surfaces

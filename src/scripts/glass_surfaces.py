@@ -64,19 +64,18 @@ def set_surface_fill(root: ET.Element, ids: tuple[str, ...], opacity: str,
 
 def clear_menu_client_fill(root: ET.Element) -> None:
     """Clear opaque dark menu surfaces while preserving borders and shadows."""
-    for node in surface_nodes(root, ("menu-normal",)):
+    menu_tiles = tuple(node.get("id") for node in root.iter()
+                       if node.get("id", "").startswith("menu-normal"))
+    for node in surface_nodes(root, menu_tiles):
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
-        if fill not in ("#000000", "#333333", "#242424"):
+        alpha = float(style.get("opacity", node.get("opacity", "1")))
+        if fill not in ("#000000", "#333333", "#242424") or alpha not in (0.48, 0.55, 1.0):
             continue
         if "opacity" in style:
-            style["opacity"] = "0.0"
+            style["opacity"] = "0.0" if node.get("id") == "menu-normal" else "0.12"
         else:
-            node.set("opacity", "0.0")
-        if "fill-opacity" in style:
-            style["fill-opacity"] = "0.0"
-        elif node.get("fill-opacity") is not None:
-            node.set("fill-opacity", "0.0")
+            node.set("opacity", "0.0" if node.get("id") == "menu-normal" else "0.12")
         if style:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
