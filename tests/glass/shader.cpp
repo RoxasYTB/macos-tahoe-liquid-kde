@@ -420,10 +420,18 @@ int main(int argc, char **argv)
         shader.setUniformValue("magnifyGlassStrength", 0.0f);
         shader.setUniformValue("offset", 0.0f);
         const auto flatPattern = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("offset", 0.2625f);
+        const auto blur035Pattern = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("offset", 0.3375f);
+        const auto blur045Pattern = render().convertToFormat(QImage::Format_RGBA8888);
         shader.setUniformValue("offset", 0.4125f);
         const auto blur055Pattern = render().convertToFormat(QImage::Format_RGBA8888);
         shader.setUniformValue("offset", 0.6f);
         const auto blur080Pattern = render().convertToFormat(QImage::Format_RGBA8888);
+        require(edgeEnergy(blur045Pattern) < edgeEnergy(blur035Pattern),
+                QStringLiteral("A stronger fine blur must soften a stable refraction test pattern"));
+        require(edgeEnergy(blur055Pattern) < edgeEnergy(blur045Pattern),
+                QStringLiteral("Blur strength 0.55 must soften more than 0.45"));
         require(edgeEnergy(blur080Pattern) < edgeEnergy(blur055Pattern),
                 QStringLiteral("A stronger blur must soften a stable refraction test pattern"));
         const QByteArray captureDirectory = qgetenv("MTTKDE_GLASS_SHADER_CAPTURE_DIR");
@@ -438,10 +446,18 @@ int main(int argc, char **argv)
                 const QString name = QStringLiteral("lens-%1.png").arg(strength == 0.08f ? "008" : "012");
                 require(lensPattern.save(directory + "/" + name), QStringLiteral("Could not save refracted shader capture"));
                 if (strength == 0.12f) {
+                    shader.setUniformValue("offset", 0.2625f);
+                    const auto lensBlur035 = render().convertToFormat(QImage::Format_RGBA8888);
+                    shader.setUniformValue("offset", 0.3375f);
+                    const auto lensBlur045 = render().convertToFormat(QImage::Format_RGBA8888);
                     shader.setUniformValue("offset", 0.4125f);
                     const auto lensBlur055 = render().convertToFormat(QImage::Format_RGBA8888);
                     shader.setUniformValue("offset", 0.6f);
                     const auto lensBlur080 = render().convertToFormat(QImage::Format_RGBA8888);
+                    require(lensBlur035.save(directory + "/lens-012-blur-035.png"),
+                            QStringLiteral("Could not save fine liquid glass capture"));
+                    require(lensBlur045.save(directory + "/lens-012-blur-045.png"),
+                            QStringLiteral("Could not save fine liquid glass capture"));
                     require(lensBlur055.save(directory + "/lens-012-blur-055.png"),
                             QStringLiteral("Could not save fine liquid glass capture"));
                     require(lensBlur080.save(directory + "/lens-012-blur-080.png"),

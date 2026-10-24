@@ -12,10 +12,10 @@ Each preset replaces the complete material: blur, opacity, refraction, color
 separation, highlights, grain, brightness, contrast, saturation and gradient.
 There is one smooth blur implementation. **Fine tuning** exposes the detailed
 controls without requiring a choice of blur algorithm.
-Both presets use a blur strength of 0.55 on the 0–20 scale: a restrained,
-fine blur that keeps backdrop detail visible through the lens. At the two
-finest levels, the first Kawase pass stays at native resolution instead of
-shrinking the backdrop. Their
+Both presets use a blur strength of 0.35 on the 0–20 scale: a very fine,
+restrained blur that keeps more backdrop detail visible through the lens. At
+the two finest levels, the first Kawase pass stays at native resolution instead
+of shrinking the backdrop. Their
 current optical defaults use a 64 px bezel and 0.12 lens strength; these are
 project-tuned values, not values supplied by Apple.
 Sub-unit blur settings now scale the finest sample spacing continuously down
@@ -98,10 +98,10 @@ cannot silently fold the sampled backdrop as its aspect ratio or scale changes.
 To render a deterministic optical comparison, run
 `MTTKDE_GLASS_SHADER_CAPTURE_DIR=/tmp/liquidglass-optics pytest -q tests/test_glass_presets.py -k native_glass_shader_pixels`.
 It writes a flat control, 0.08/0.12 refraction PNGs, and 0.12 lens captures at
-the 0.55/0.8-mapped blur offsets over colored bands and diagonal lines. The
-probe checks that stronger blur lowers edge energy while retaining the smooth
-lens mapping. It uses software OpenGL under Xvfb; it checks shader behavior,
-not KWin's live GPU/compositor integration.
+the 0.35/0.45/0.55/0.8-mapped blur offsets over colored bands and diagonal
+lines. The probe checks that each stronger blur lowers edge energy while
+retaining the smooth lens mapping. It uses software OpenGL under Xvfb; it checks
+shader behavior, not KWin's live GPU/compositor integration.
 
 To smoke-test the freshly built X11 module in a private KWin/Xvfb session, run
 `MTTKDE_X11_PLUGIN=/path/to/liquidglass_x11.so pytest -q tests/test_acrylic_glass_x11_smoke.py`.
