@@ -79,6 +79,19 @@ def clear_menu_client_fill(root: ET.Element) -> None:
         if style:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
+    for node in surface_nodes(root, menu_tiles):
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        fill = style.get("fill", node.get("fill"))
+        alpha = float(style.get("opacity", node.get("opacity", "1")))
+        if fill != "#000000" or alpha != 0.18:
+            continue
+        if "opacity" in style:
+            style["opacity"] = "0.06"
+        else:
+            node.set("opacity", "0.06")
+        if style:
+            node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
+
 
 def _write_svg(path: Path, root: ET.Element) -> None:
     ET.register_namespace("", _SVG)
