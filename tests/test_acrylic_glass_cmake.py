@@ -112,6 +112,12 @@ def test_acrylic_glass_preset_fits_kcm_ranges():
         assert default == (str(value).lower() if isinstance(value, bool) else str(value)), key
 
 
+def test_wayland_effect_links_xcb_render_when_x11_abi_is_exposed():
+    source = (ROOT / "src/CMakeLists.txt").read_text(encoding="utf-8")
+    wayland_target = source.split("if(GLASS_WAYLAND)", 1)[1].split("endif()", 1)[0]
+    assert "XCB::RENDER" in wayland_target
+
+
 def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profiles():
     distort = (ROOT / "src/shaders/distort.glsl").read_text(encoding="utf-8")
     sdf = (ROOT / "src/shaders/sdf.glsl").read_text(encoding="utf-8")
