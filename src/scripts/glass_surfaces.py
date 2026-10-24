@@ -62,6 +62,25 @@ def set_surface_fill(root: ET.Element, ids: tuple[str, ...], opacity: str,
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
 
+def clear_menu_client_fill(root: ET.Element) -> None:
+    """Clear opaque dark menu surfaces while preserving borders and shadows."""
+    for node in surface_nodes(root, ("menu-normal",)):
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        fill = style.get("fill", node.get("fill"))
+        if fill not in ("#000000", "#333333", "#242424"):
+            continue
+        if "opacity" in style:
+            style["opacity"] = "0.0"
+        else:
+            node.set("opacity", "0.0")
+        if "fill-opacity" in style:
+            style["fill-opacity"] = "0.0"
+        elif node.get("fill-opacity") is not None:
+            node.set("fill-opacity", "0.0")
+        if style:
+            node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
+
+
 def _write_svg(path: Path, root: ET.Element) -> None:
     ET.register_namespace("", _SVG)
     ET.register_namespace("xlink", _XLINK)
@@ -108,5 +127,9 @@ def apply_kvantum_surface_defaults(path: Path) -> None:
     # The shadow frame also references the menu's surface tiles.
     ids = tuple(node.get("id") for node in root.iter()
                 if node.get("id", "").startswith(("menu-normal", "menu-shadow")))
-    set_surface_fill(root, ids, opacity, color)
+    # Remove the broad client fill, but preserve the subtle edge highlights
+    # and shadow details in the nine-slice menu frame.
+    set_surface_fill(root, ("menu-normal",), opacity, color)
+    if wallpaper == "MacTahoe" and is_dark:
+        clear_menu_client_fill(root)
     _write_svg(path, root)

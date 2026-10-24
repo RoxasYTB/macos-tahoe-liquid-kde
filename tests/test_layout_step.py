@@ -92,6 +92,42 @@ def test_capture_empty_when_no_appletsrc(monkeypatch, tmp_path):
     assert layout._capture_pinned_launchers() == []
 
 
+def test_remove_dock_margin_separators_preserves_top_bar(monkeypatch, tmp_path):
+    monkeypatch.setattr(layout, "HOME", tmp_path)
+    config = tmp_path / ".config" / "plasma-org.kde.plasma.desktop-appletsrc"
+    config.parent.mkdir(parents=True)
+    config.write_text("""\
+[Containments][1]
+plugin=org.kde.panel
+
+[Containments][1][Applets][2]
+plugin=org.kde.mac.tahoe.liquid.icontasks
+
+[Containments][1][Applets][3]
+plugin=org.kde.plasma.marginsseparator
+
+[Containments][1][General]
+AppletOrder=2;3
+
+[Containments][4]
+plugin=org.kde.panel
+
+[Containments][4][Applets][5]
+plugin=org.kde.plasma.marginsseparator
+
+[Containments][4][General]
+AppletOrder=5
+""")
+    monkeypatch.setattr(layout, "_evaluate_layout_script", lambda script: True)
+
+    assert layout._remove_dock_margin_separators()
+    result = config.read_text()
+    assert "AppletOrder=2\n" in result
+    assert "[Containments][1][Applets][3]" not in result
+    assert "[Containments][4][Applets][5]" in result
+    assert "AppletOrder=5\n" in result
+
+
 def test_reset_with_pins_writes_launchers_into_script(monkeypatch):
     captured = {}
     monkeypatch.setattr(layout, "_evaluate_layout_script",

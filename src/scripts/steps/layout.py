@@ -1,5 +1,6 @@
 from localization import tr
 import json
+import configparser
 import re
 import subprocess
 import time
@@ -295,6 +296,64 @@ def _layout_looks_installed() -> bool:
     return all(needle in text for needle in _CUSTOM_PANEL_NEEDLES)
 
 
+def _remove_dock_margin_separators() -> bool:
+    """Remove stale margins-separator applets from existing MacTahoe docks."""
+    appletsrc = HOME / ".config/plasma-org.kde.plasma.desktop-appletsrc"
+    try:
+        text = appletsrc.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+    panel_pattern = re.compile(r"^\[Containments\]\[(\d+)\](?:\n|$)", re.MULTILINE)
+    boundaries = [match.start() for match in panel_pattern.finditer(text)] + [len(text)]
+    changed = False
+    for start, end in reversed(list(zip(boundaries, boundaries[1:]))):
+        block = text[start:end]
+        panel_id_match = panel_pattern.match(block)
+        if not panel_id_match or "plugin=org.kde.panel" not in block:
+            continue
+        panel_id = panel_id_match.group(1)
+        if f"plugin={MAC_TASKS_ID}" not in block:
+            continue
+        applet_plugins = {
+            applet_id: plugin
+            for applet_id, plugin in re.findall(
+                rf"^\[Containments\]\[{panel_id}\]\[Applets\]\[(\d+)\]"
+                rf"(?:\[[^\]]+\])*\n(?:[^\[]*\n)*?plugin=([^\n]+)",
+                block, re.MULTILINE,
+            )
+        }
+        separators = {key for key, value in applet_plugins.items()
+                      if value == "org.kde.plasma.marginsseparator"}
+        if not separators:
+            continue
+        order_pattern = re.compile(
+            rf"(^\[Containments\]\[{panel_id}\]\[General\]\n)AppletOrder=([^\n]*)",
+            re.MULTILINE,
+        )
+        order = order_pattern.search(block)
+        if not order:
+            continue
+        order_ids = order.group(2).split(";")
+        block = order_pattern.sub(
+            lambda match: match.group(1) + "AppletOrder=" + ";".join(
+                item for item in order_ids if item not in separators
+            ), block,
+        )
+        for applet_id in separators:
+            block = re.sub(
+                rf"^\[Containments\]\[{panel_id}\]\[Applets\]\[{applet_id}\]"
+                rf"(?:\[[^\]]+\])*\n.*?(?=^\[|\Z)",
+                "", block, flags=re.MULTILINE | re.DOTALL,
+            )
+        text = text[:start] + block + text[end:]
+        changed = True
+    if changed:
+        appletsrc.write_text(text, encoding="utf-8")
+        _evaluate_layout_script("panels().forEach(function (panel) { panel.reload(); });")
+    return changed
+
+
 def _wait_for_layout_install(timeout_seconds: float = 5.0) -> bool:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
@@ -392,6 +451,7 @@ def install() -> None:
     if applied and _wait_for_layout_install():
         record_applied_edition(HOME, edition_name())
         _mark_layout_installed()
+        _remove_dock_margin_separators()
         ok(tr("Layout installed (kept {count} pinned apps)", count=len(pins)) if pins
            else tr("Layout installed"))
     else:

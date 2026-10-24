@@ -136,7 +136,24 @@ def test_tahoe_dark_kvantum_menus_remove_black_fill(tmp_path, monkeypatch):
             fills.append(opacity)
     assert fills
     assert 0.0 in fills
-    assert not any(opacity in (0.48, 0.55) for opacity in fills)
+    assert any(opacity == 0.48 for opacity in fills)
+
+
+def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
+    import glass_surfaces
+    monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
+    source = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.svg"
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    glass_surfaces.apply_kvantum_surface_defaults(target)
+    root = ET.parse(target).getroot()
+    menu = next(node for node in root.iter() if node.get("id") == "menu-normal")
+    menu_style = dict(part.split(":", 1) for part in menu.get("style", "").split(";") if ":" in part)
+    assert float(menu_style["opacity"]) == 0.0
+    assert menu_style["fill"] == "#000000"
+    shadow = next(node for node in root.iter() if node.get("id") == "path4382-5")
+    shadow_style = dict(part.split(":", 1) for part in shadow.get("style", "").split(";") if ":" in part)
+    assert float(shadow_style["opacity"]) == .48
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
