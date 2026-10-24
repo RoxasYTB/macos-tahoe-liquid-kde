@@ -46,7 +46,7 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     vec2 outwardNormal;
     float signedDistance = lgLensDistanceAndNormal(surfacePosition, halfSize, cornerRadius,
                                                    squircleBlend, outwardNormal);
-    float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.12);
+    float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.30);
     float bezelWidth = min(max(refractionWidth, 1.0), apertureRadius);
     float depth = min(bezelWidth * lensStrength * 3.0, bezelWidth * 1.25);
     float inset = min(max(-signedDistance, 0.0), bezelWidth);

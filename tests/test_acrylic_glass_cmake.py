@@ -135,9 +135,9 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "vec2 heightGradient = -depth * profileDerivative" in distort
     assert "outwardNormal / max(bezelWidth, 1.0)" in distort
     assert "out vec3 surfaceNormal" in distort
-    assert "float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.12)" in distort
+    assert "float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.30)" in distort
     config_ui = (ROOT / "src/kcm/config.ui").read_text(encoding="utf-8")
-    assert '<double>0.12</double>' in config_ui
+    assert '<double>0.30</double>' in config_ui
     assert "bezelWidth * lensStrength * 3.0" in distort
     assert "float refractiveIndex = 1.45" in distort
     highlight = (ROOT / "src/shaders/highlight.glsl").read_text(encoding="utf-8")
@@ -163,7 +163,7 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "q.x > q.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0)" not in sdf
     for shader_name in ("glass.glsl", "glass_core.glsl"):
         shader = (ROOT / "src/shaders" / shader_name).read_text(encoding="utf-8")
-        assert "lgLensUV(uv, pos, magnifyGlassStrength, refrBand, blurSize, backgroundSize," in shader
+        assert "lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize," in shader
 
 
 def test_finest_blur_keeps_its_first_kawase_pass_at_native_resolution():
@@ -268,7 +268,7 @@ def test_golden_gate_shares_tahoe_optics_with_its_own_gradient(monkeypatch):
     assert float(golden["RgbDriftStrength"]) == float(rgb_default)
     assert float(tahoe["MagnifyGlassStrength"]) == float(golden["MagnifyGlassStrength"])
     assert float(tahoe["BlurStrength"]) == 1.0
-    assert float(tahoe["MagnifyGlassStrength"]) == float(lens_default) == 0.12
+    assert float(tahoe["MagnifyGlassStrength"]) == float(lens_default) == 0.22
     assert float(tahoe["RefractionWidth"]) == 42.0
 
 
