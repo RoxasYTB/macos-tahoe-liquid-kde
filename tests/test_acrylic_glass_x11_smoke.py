@@ -69,7 +69,10 @@ done
 [ "$ready" = true ] || { cat "$root/kwin.log"; exit 1; }
 loaded=$(qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect liquidglass)
 [ "$loaded" = true ] || { cat "$root/kwin.log"; exit 1; }
-grep -Fxq liquidglass <(qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.activeEffects)
+grep -Fxq true <(qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded liquidglass)
+grep -Fxq true <(qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.isEffectSupported liquidglass)
+grep -Fxq liquidglass <(qdbus6 org.kde.KWin /Effects org.freedesktop.DBus.Properties.Get org.kde.kwin.Effects activeEffects)
+grep -Fxq true <(qdbus6 org.kde.KWin /Compositor org.freedesktop.DBus.Properties.Get org.kde.kwin.Compositing active)
 grep -F "$plugins/liquidglass.so" "/proc/$kwin/maps" >/dev/null
 '''
     env = {key: value for key, value in os.environ.items() if key in ("PATH", "LANG")}

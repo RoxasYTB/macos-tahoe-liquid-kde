@@ -112,8 +112,9 @@ integration; use the separate X11 smoke test below to verify module loading.
 
 To smoke-test the freshly built X11 module in a private KWin/Xvfb session, run
 `MTTKDE_X11_PLUGIN=/path/to/liquidglass_x11.so pytest -q tests/test_acrylic_glass_x11_smoke.py`.
-The test checks that KWin activates and maps that exact module without replacing
-the running desktop plugin; it validates loading, not GPU rendering quality.
+The test checks that KWin's OpenGL compositor is active, the exact module is
+loaded and supported, and the running desktop plugin remains untouched. It
+validates integration state, not the rendered image or GPU quality.
 
 - [macOS Tahoe 26 introduction](https://www.apple.com/newsroom/2025/06/macos-tahoe-26-makes-the-mac-more-capable-productive-and-intelligent-than-ever/): translucent Dock and controls that reflect the surrounding desktop.
 - [macOS Golden Gate](https://www.apple.com/os/macos/): more uniform refraction and improved contrast.
