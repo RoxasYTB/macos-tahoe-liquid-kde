@@ -163,6 +163,8 @@ def test_mac_dock_has_no_gap_between_launcher_and_running_tasks(offline, relativ
 
     assert 'var launcher = dock.addWidget("org.kde.mac-tahoe-liquid-kde.launcher")' in launcher_to_tasks
     assert "org.kde.plasma.marginsseparator" not in launcher_to_tasks
+    tasks_to_trash = dock.split("var tasks =", 1)[1]
+    assert "org.kde.plasma.marginsseparator" not in tasks_to_trash
 
 
 def test_panel_background_keeps_light_dark_surface_parity(offline):

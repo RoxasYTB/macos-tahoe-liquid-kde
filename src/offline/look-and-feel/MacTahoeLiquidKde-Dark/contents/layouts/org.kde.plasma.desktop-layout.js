@@ -101,5 +101,4 @@ var tasks = dock.addWidget("org.kde.mac.tahoe.liquid.icontasks");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", "preferred://filemanager,preferred://terminal,preferred://browser,applications:systemsettings.desktop,applications:steam.desktop");
 
-dock.addWidget("org.kde.plasma.marginsseparator");
 dock.addWidget("org.kde.mac-tahoe-liquid-kde.trashcan");

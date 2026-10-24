@@ -110,6 +110,5 @@ for (var screen = 0; screen < screenCount; screen++) {
     // every dock across every screen (see _append_launcher_restore).
     tasks.writeConfig("launchers", "");
 
-    dock.addWidget("org.kde.plasma.marginsseparator");
     dock.addWidget("org.kde.mac-tahoe-liquid-kde.trashcan");
 }

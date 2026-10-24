@@ -9,7 +9,8 @@ from theme_switch import default_wallpaper
 PLASMA_SURFACES = (
     "dialogs/background.svgz", "dialogs/launcher-search.svgz",
     "widgets/background.svgz", "widgets/translucentbackground.svgz",
-    "widgets/tooltip.svgz",
+    "widgets/tooltip.svgz", "solid/dialogs/background.svgz",
+    "solid/widgets/panel-background.svgz", "solid/widgets/tooltip.svgz",
 )
 _TILES = ("center", "top", "bottom", "left", "right",
           "topleft", "topright", "bottomleft", "bottomright")
@@ -44,7 +45,9 @@ def set_surface_fill(root: ET.Element, ids: tuple[str, ...], opacity: str,
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = style.get("opacity", node.get("opacity", "1"))
-        if fill not in ("#000000", "#ffffff") or float(alpha) not in (.48, .55):
+        translucent_fill = fill in ("#000000", "#ffffff") and float(alpha) in (.48, .55)
+        solid_fallback = fill in ("#333333", "#242424") and float(alpha) == 1.0
+        if not (translucent_fill or solid_fallback):
             continue
         if "opacity" in style:
             style["opacity"] = opacity

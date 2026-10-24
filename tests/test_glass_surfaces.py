@@ -48,7 +48,7 @@ def test_golden_gate_client_fill_follows_appearance(mode, tmp_path, monkeypatch)
     before = {path: path.read_bytes() for path in theme.rglob("*.svgz")}
     glass_surfaces.apply_plasma_surface_defaults(theme)
     assert all(path.read_bytes() == data for path, data in before.items())
-    for name in ("widgets/panel-background.svgz", "solid/dialogs/background.svgz"):
+    for name in ("widgets/panel-background.svgz",):
         assert (theme / name).read_bytes() == (ROOT / f"MacTahoeLiquidKde-{mode}" / name).read_bytes()
 
 
@@ -106,12 +106,15 @@ def test_tahoe_dark_plasma_surfaces_remove_black_fill(mode, tmp_path, monkeypatc
                 style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
                 fill = style.get("fill", node.get("fill"))
                 opacity = style.get("opacity", node.get("opacity", "1"))
-                if fill == "#000000" and float(opacity) == alpha:
+                solid_fallback = fill in ("#333333", "#242424") and float(opacity) == alpha
+                translucent_fill = fill == "#000000" and float(opacity) == alpha
+                if solid_fallback or translucent_fill:
                     count += 1
             return count
 
-        assert dark_fill_count(source, 0.48) > 0, name
-        assert dark_fill_count(updated, 0.0) == dark_fill_count(source, 0.48), name
+        source_fill_count = sum(dark_fill_count(source, alpha) for alpha in (0.48, 0.55, 1.0))
+        assert source_fill_count > 0, name
+        assert dark_fill_count(updated, 0.0) == source_fill_count, name
 
 
 def test_tahoe_dark_kvantum_menus_remove_black_fill(tmp_path, monkeypatch):
