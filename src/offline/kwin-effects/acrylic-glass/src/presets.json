@@ -3,7 +3,7 @@
     "id": "tahoe",
     "value": 1,
     "values": {
-      "BlurStrength": 0.525,
+      "BlurStrength": 1.0,
       "MaterialOpacity": 1.0,
       "NoiseStrength": 1,
       "RgbDriftStrength": 1.0,
@@ -26,7 +26,7 @@
     "id": "golden-gate",
     "value": 2,
     "values": {
-      "BlurStrength": 0.525,
+      "BlurStrength": 1.0,
       "MaterialOpacity": 1.0,
       "NoiseStrength": 1,
       "RgbDriftStrength": 1.0,
