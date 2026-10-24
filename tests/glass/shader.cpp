@@ -386,34 +386,70 @@ int main(int argc, char **argv)
         shader.setUniformValue("box", QVector4D(width / 2, height / 2, width / 2, height / 2));
         shader.setUniformValue("cornerRadius", QVector4D(20, 20, 20, 20));
         shader.setUniformValue("refractionWidth", 64.0f);
+        const QColor bands[] = {QColor("#e63946"), QColor("#f1fa8c"), QColor("#2a9d8f"),
+                                QColor("#457b9d"), QColor("#9b5de5"), QColor("#f15bb5"),
+                                QColor("#00bbf9"), QColor("#ff9f1c")};
+        QImage pattern(width, height, QImage::Format_RGBA8888);
+        QPainter painter(&pattern);
+        for (int x = 0; x < width; ++x) {
+            painter.fillRect(x, 0, 1, height, bands[(x / 24) % std::size(bands)]);
+        }
+        painter.setPen(QPen(Qt::white, 1));
+        for (int diagonal = -height; diagonal < width; diagonal += 12) {
+            painter.drawLine(diagonal, 0, diagonal + height, height);
+        }
+        painter.end();
+        texture.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, pattern.constBits());
+        auto edgeEnergy = [](const QImage &source) {
+            double energy = 0.0;
+            for (int y = 0; y < source.height() - 1; ++y) {
+                for (int x = 0; x < source.width() - 1; ++x) {
+                    const QRgb current = source.pixel(x, y);
+                    const QRgb right = source.pixel(x + 1, y);
+                    const QRgb below = source.pixel(x, y + 1);
+                    energy += std::abs(qRed(current) - qRed(right))
+                        + std::abs(qGreen(current) - qGreen(right))
+                        + std::abs(qBlue(current) - qBlue(right))
+                        + std::abs(qRed(current) - qRed(below))
+                        + std::abs(qGreen(current) - qGreen(below))
+                        + std::abs(qBlue(current) - qBlue(below));
+                }
+            }
+            return energy;
+        };
+        shader.setUniformValue("magnifyGlassStrength", 0.0f);
+        shader.setUniformValue("offset", 0.0f);
+        const auto flatPattern = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("offset", 0.4125f);
+        const auto blur055Pattern = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("offset", 0.6f);
+        const auto blur080Pattern = render().convertToFormat(QImage::Format_RGBA8888);
+        require(edgeEnergy(blur080Pattern) < edgeEnergy(blur055Pattern),
+                QStringLiteral("A stronger blur must soften a stable refraction test pattern"));
         const QByteArray captureDirectory = qgetenv("MTTKDE_GLASS_SHADER_CAPTURE_DIR");
         if (!captureDirectory.isEmpty()) {
             const QString directory = QString::fromLocal8Bit(captureDirectory);
             require(QDir().mkpath(directory), QStringLiteral("Could not create shader capture directory"));
-            const QColor bands[] = {QColor("#e63946"), QColor("#f1fa8c"), QColor("#2a9d8f"),
-                                    QColor("#457b9d"), QColor("#9b5de5"), QColor("#f15bb5"),
-                                    QColor("#00bbf9"), QColor("#ff9f1c")};
-            QImage pattern(width, height, QImage::Format_RGBA8888);
-            QPainter painter(&pattern);
-            for (int x = 0; x < width; ++x) {
-                painter.fillRect(x, 0, 1, height, bands[(x / 24) % std::size(bands)]);
-            }
-            painter.setPen(QPen(Qt::white, 1));
-            for (int diagonal = -height; diagonal < width; diagonal += 12) {
-                painter.drawLine(diagonal, 0, diagonal + height, height);
-            }
-            painter.end();
-            texture.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, pattern.constBits());
-            shader.setUniformValue("magnifyGlassStrength", 0.0f);
-            const auto flatPattern = render().convertToFormat(QImage::Format_RGBA8888);
             require(flatPattern.save(directory + "/lens-flat.png"), QStringLiteral("Could not save flat shader capture"));
             for (const float strength : {0.08f, 0.12f}) {
                 shader.setUniformValue("magnifyGlassStrength", strength);
+                shader.setUniformValue("offset", 0.0f);
                 const auto lensPattern = render().convertToFormat(QImage::Format_RGBA8888);
                 const QString name = QStringLiteral("lens-%1.png").arg(strength == 0.08f ? "008" : "012");
                 require(lensPattern.save(directory + "/" + name), QStringLiteral("Could not save refracted shader capture"));
+                if (strength == 0.12f) {
+                    shader.setUniformValue("offset", 0.4125f);
+                    const auto lensBlur055 = render().convertToFormat(QImage::Format_RGBA8888);
+                    shader.setUniformValue("offset", 0.6f);
+                    const auto lensBlur080 = render().convertToFormat(QImage::Format_RGBA8888);
+                    require(lensBlur055.save(directory + "/lens-012-blur-055.png"),
+                            QStringLiteral("Could not save fine liquid glass capture"));
+                    require(lensBlur080.save(directory + "/lens-012-blur-080.png"),
+                            QStringLiteral("Could not save stronger liquid glass capture"));
+                }
             }
         }
+        shader.setUniformValue("offset", 0.0f);
         shader.setUniformValue("magnifyGlassStrength", 0.08f);
         refractedGlass = render().convertToFormat(QImage::Format_RGBA8888);
         if (refractionReference.isNull()) refractionReference = refractedGlass;
