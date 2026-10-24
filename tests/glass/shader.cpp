@@ -53,6 +53,8 @@ int main(int argc, char **argv)
     surface.create();
     require(context.makeCurrent(&surface), QStringLiteral("makeCurrent failed"));
     auto *gl = context.functions();
+    const auto *renderer = gl->glGetString(GL_RENDERER);
+    fprintf(stderr, "OpenGL renderer: %s\n", renderer ? reinterpret_cast<const char *>(renderer) : "unknown");
     const int width = 192, height = 128;
     QImage backdrop(width, height, QImage::Format_RGBA8888);
     backdrop.fill(QColor(160, 160, 160));

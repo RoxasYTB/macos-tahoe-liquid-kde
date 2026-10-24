@@ -103,6 +103,13 @@ lines. The probe checks that each stronger blur lowers edge energy while
 retaining the smooth lens mapping. It uses software OpenGL under Xvfb; it checks
 shader behavior, not KWin's live GPU/compositor integration.
 
+On an active X11 session with NVIDIA GLX, run the same offscreen shader probe
+on the discrete GPU with
+`MTTKDE_RUN_GPU_SHADER_PROBE=1 MTTKDE_GLASS_SHADER_CAPTURE_DIR=/tmp/liquidglass-nvidia pytest -q tests/test_glass_presets.py -k nvidia_gpu`.
+It checks the OpenGL renderer string before running and records the selected
+renderer. It does not take a desktop screenshot or prove KWin compositor
+integration; use the separate X11 smoke test below to verify module loading.
+
 To smoke-test the freshly built X11 module in a private KWin/Xvfb session, run
 `MTTKDE_X11_PLUGIN=/path/to/liquidglass_x11.so pytest -q tests/test_acrylic_glass_x11_smoke.py`.
 The test checks that KWin activates and maps that exact module without replacing

@@ -155,3 +155,34 @@ def test_native_glass_shader_pixels(kcm_probe, tmp_path, monkeypatch):
         finally:
             server.terminate()
             server.wait(timeout=5)
+
+
+@pytest.mark.skipif(os.environ.get("MTTKDE_RUN_GPU_SHADER_PROBE") != "1",
+                    reason="Set MTTKDE_RUN_GPU_SHADER_PROBE=1 to render on the active NVIDIA GPU")
+def test_native_glass_shader_pixels_on_nvidia_gpu(kcm_probe, tmp_path, monkeypatch):
+    if not os.environ.get("DISPLAY") or not shutil.which("glxinfo"):
+        pytest.skip("An active X11 display and glxinfo are required for the GPU probe")
+    renderer = subprocess.run(["glxinfo", "-B"], capture_output=True, text=True, timeout=15)
+    assert renderer.returncode == 0, renderer.stdout + renderer.stderr
+    assert "OpenGL renderer string: NVIDIA" in renderer.stdout, renderer.stdout
+
+    env = os.environ.copy()
+    env.update(QT_QPA_PLATFORM="xcb", XDG_CONFIG_HOME=str(tmp_path / "config"),
+               XDG_CACHE_HOME=str(tmp_path / "cache"))
+    env.pop("LIBGL_ALWAYS_SOFTWARE", None)
+    import glass_surfaces
+    monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacGoldenGate")
+    themes = tmp_path / "themes"
+    for mode in ("Light", "Dark"):
+        name = "MacTahoeLiquidKde-" + mode
+        shutil.copytree(REPO / "src/offline/plasma-theme" / name, themes / name)
+        glass_surfaces.apply_plasma_surface_defaults(themes / name)
+    capture_directory = os.environ.get("MTTKDE_GLASS_SHADER_CAPTURE_DIR")
+    if capture_directory:
+        env["MTTKDE_GLASS_SHADER_CAPTURE_DIR"] = capture_directory
+    result = subprocess.run([str(kcm_probe / "glass-shader-probe"), str(glass.SRC / "src/shaders"),
+                             str(themes)],
+                            env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "OpenGL renderer: NVIDIA" in result.stderr, result.stderr
+    assert "both profiles verified" in result.stderr
