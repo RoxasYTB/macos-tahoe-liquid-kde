@@ -157,7 +157,7 @@ def test_tahoe_dark_kvantum_menus_remove_black_fill(tmp_path, monkeypatch):
             fills.append(opacity)
     assert fills
     assert 0.0 in fills
-    assert any(opacity == 0.48 for opacity in fills)
+    assert 0.48 not in fills
 
 
 def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
@@ -172,9 +172,10 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
     menu_style = dict(part.split(":", 1) for part in menu.get("style", "").split(";") if ":" in part)
     assert float(menu_style["opacity"]) == 0.0
     assert menu_style["fill"] == "#000000"
-    shadow = next(node for node in root.iter() if node.get("id") == "path4382-5")
-    shadow_style = dict(part.split(":", 1) for part in shadow.get("style", "").split(";") if ":" in part)
-    assert float(shadow_style["opacity"]) == .48
+    for node_id in ("path4382-5", "path4714-2"):
+        outline = next(node for node in root.iter() if node.get("id") == node_id)
+        outline_style = dict(part.split(":", 1) for part in outline.get("style", "").split(";") if ":" in part)
+        assert float(outline_style["opacity"]) == 0.0
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
@@ -235,11 +236,11 @@ def test_tahoe_dark_qt_menu_tiles_remove_heavy_black_frame(tmp_path, monkeypatch
     shutil.copy2(source, target)
     glass_surfaces.apply_kvantum_surface_defaults(target)
     root = ET.parse(target).getroot()
-    for node_id in ("path9036", "path3597"):
+    for node_id in ("path9036", "path3597", "path4382-5", "path4714-2"):
         node = next(node for node in root.iter() if node.get("id") == node_id)
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
-        assert float(style["opacity"]) == pytest.approx(.12)
-        assert float(style["fill-opacity"]) == pytest.approx(1.0)
+        assert float(style["opacity"]) == pytest.approx(0.0)
+        assert float(style.get("fill-opacity", node.get("fill-opacity", "1"))) == pytest.approx(1.0)
     left = next(node for node in root.iter() if node.get("id") == "menu-normal-left")
     left_style = dict(part.split(":", 1) for part in left[0].get("style", "").split(";") if ":" in part)
     assert float(left_style["opacity"]) < .2
