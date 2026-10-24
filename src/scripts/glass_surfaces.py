@@ -86,12 +86,34 @@ def soften_dark_surface_rim(root: ET.Element, ids: tuple[str, ...]) -> None:
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = float(style.get("opacity", node.get("opacity", "1")))
-        if fill != "#000000" or alpha != 0.18:
+        if fill != "#000000" or alpha not in (0.06, 0.18):
             continue
         if "opacity" in style:
-            style["opacity"] = "0.06"
+            style["opacity"] = "0.015"
         else:
-            node.set("opacity", "0.06")
+            node.set("opacity", "0.015")
+        if style:
+            node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
+
+
+def soften_menu_frame(root: ET.Element) -> None:
+    """Keep the menu's glass edge, but remove its heavy dark outline."""
+    menu_tiles = tuple(node.get("id") for node in root.iter()
+                       if node.get("id", "").startswith(("menu-normal", "menu-shadow")))
+    for node in surface_nodes(root, menu_tiles):
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        fill = style.get("fill", node.get("fill"))
+        alpha = float(style.get("opacity", node.get("opacity", "1")))
+        if fill == "#000000" and alpha == 0.06:
+            value = "0.015"
+        elif fill == "#ffffff" and alpha == 0.22:
+            value = "0.14"
+        else:
+            continue
+        if "opacity" in style:
+            style["opacity"] = value
+        else:
+            node.set("opacity", value)
         if style:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
@@ -149,4 +171,5 @@ def apply_kvantum_surface_defaults(path: Path) -> None:
     set_surface_fill(root, ("menu-normal",), opacity, color)
     if wallpaper == "MacTahoe" and is_dark:
         clear_menu_client_fill(root)
+        soften_menu_frame(root)
     _write_svg(path, root)

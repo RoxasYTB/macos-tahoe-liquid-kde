@@ -139,7 +139,7 @@ def test_tahoe_dark_plasma_surfaces_remove_black_fill(mode, tmp_path, monkeypatc
         if name == "widgets/background.svgz":
             dark_rim = next(node for node in updated.iter() if node.get("id") == "rect1259")
             dark_rim_style = dict(part.split(":", 1) for part in dark_rim.get("style", "").split(";") if ":" in part)
-            assert float(dark_rim_style["opacity"]) == pytest.approx(.06)
+            assert float(dark_rim_style["opacity"]) == pytest.approx(.015)
             light_rim = next(node for node in updated.iter() if node.get("id") == "rect1018")
             light_rim_style = dict(part.split(":", 1) for part in light_rim.get("style", "").split(";") if ":" in part)
             assert float(light_rim_style["opacity"]) == pytest.approx(.22)
@@ -183,10 +183,10 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
         outline = next(node for node in root.iter() if node.get("id") == node_id)
         outline_style = dict(part.split(":", 1) for part in outline.get("style", "").split(";") if ":" in part)
         assert float(outline_style["opacity"]) == 0.0
-    dark_rim = next(node for node in root.iter() if node.get("fill") == "#000000" and node.get("opacity") == "0.06")
-    assert float(dark_rim.get("opacity")) == pytest.approx(.06)
-    light_rim = next(node for node in root.iter() if node.get("fill") == "#ffffff" and node.get("opacity") == ".22")
-    assert float(light_rim.get("opacity")) == pytest.approx(.22)
+    dark_rim = next(node for node in root.iter() if node.get("fill") == "#000000" and node.get("opacity") == "0.015")
+    assert float(dark_rim.get("opacity")) == pytest.approx(.015)
+    light_rim = next(node for node in root.iter() if node.get("fill") == "#ffffff" and node.get("opacity") == "0.14")
+    assert float(light_rim.get("opacity")) == pytest.approx(.14)
     installed = target.read_bytes()
     glass_surfaces.apply_kvantum_surface_defaults(target)
     assert target.read_bytes() == installed
