@@ -189,16 +189,33 @@ def _owned_effect_paths(directory: Path) -> list[Path]:
     )]
 
 
+def _make_effect_path_readable(destination: Path) -> bool:
+    try:
+        with _as_root():
+            for directory in (destination.parent.parent, destination.parent):
+                directory.mkdir(parents=True, exist_ok=True, mode=0o755)
+                directory.chmod(0o755)
+            if destination.is_file():
+                destination.chmod(0o644)
+    except OSError as exc:
+        fail(tr('Acrylic Glass plugin directory is not accessible: {exc}', exc=exc))
+        return False
+    return True
+
+
 def _install_effect_binary(source: Path, destination: Path) -> bool:
     # Immutable filenames bypass Qt's resident-library cache. Reusing an
     # identical build must preserve its inode, not replace a mapped file.
     if destination.is_file() and not destination.is_symlink():
         if source.read_bytes() == destination.read_bytes():
+            if not _make_effect_path_readable(destination):
+                return False
             ok(tr('Acrylic Glass already installed'))
             return True
         fail(tr('Acrylic Glass versioned file has unexpected contents'))
         return False
-    return sudo_install_file(source, destination, tr('Acrylic Glass installed'))
+    return (sudo_install_file(source, destination, tr('Acrylic Glass installed'))
+            and _make_effect_path_readable(destination))
 
 
 def _activate_effect_binary(destination: Path, link: Path) -> bool:

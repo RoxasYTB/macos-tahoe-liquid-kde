@@ -183,8 +183,10 @@ def test_finest_blur_keeps_its_first_kawase_pass_at_native_resolution():
 def test_acrylic_glass_installs_the_effect_default_blur(monkeypatch, tmp_path, capsys,
                                                        active, returncode, identity, confirmed, edition):
     """Fresh installs apply the edition material and preserve radius overrides."""
+    import contextlib
     from steps import acrylic_glass
     from subprocess import CompletedProcess
+    monkeypatch.setattr(acrylic_glass, "_as_root", contextlib.nullcontext)
     monkeypatch.setattr(acrylic_glass, "default_wallpaper", lambda: edition)
 
     build = tmp_path / "build"
@@ -434,6 +436,8 @@ def test_detects_mapped_plugin_retained_after_atomic_replacement(tmp_path):
 
 def test_versioned_plugin_upgrade_and_identical_reinstall(tmp_path, monkeypatch):
     import contextlib
+    import os
+    import stat
     from steps import acrylic_glass as glass
 
     monkeypatch.setattr(glass, "_as_root", contextlib.nullcontext)
@@ -448,7 +452,21 @@ def test_versioned_plugin_upgrade_and_identical_reinstall(tmp_path, monkeypatch)
     directory = tmp_path / "plugins"
     source.write_bytes(b"first build")
     first = glass._versioned_effect_path(source, directory)
+    original_umask = os.umask(0o027)
+    try:
+        assert glass._install_effect_binary(source, first)
+    finally:
+        os.umask(original_umask)
+    assert stat.S_IMODE(first.parent.parent.stat().st_mode) == 0o755
+    assert stat.S_IMODE(first.parent.stat().st_mode) == 0o755
+    assert stat.S_IMODE(first.stat().st_mode) == 0o644
+    first.parent.parent.chmod(0o750)
+    first.parent.chmod(0o750)
+    first.chmod(0o666)
     assert glass._install_effect_binary(source, first)
+    assert stat.S_IMODE(first.parent.parent.stat().st_mode) == 0o755
+    assert stat.S_IMODE(first.parent.stat().st_mode) == 0o755
+    assert stat.S_IMODE(first.stat().st_mode) == 0o644
     link = directory / "liquidglass.so"
     assert glass._activate_effect_binary(first, link)
     assert link.resolve() == first
