@@ -234,6 +234,13 @@ def test_layout_js_references_real_plasmoid_ids():
     otherwise the layout script silently leaves a hole in the panel
     when plasmashell can't find the package."""
     layout_js = (OFFLINE_DIR / "layouts/mac-tahoe.js").read_text()
+    assert 'tasks.writeConfig("separateLaunchers", false)' in layout_js
+    taskmanager_qml = (
+        OFFLINE_DIR
+        / "plasmoids/org.kde.mac.tahoe.liquid.taskmanager/contents/ui/main.qml"
+    ).read_text()
+    assert "if (!Plasmoid.configuration.separateLaunchers" in taskmanager_qml
+    assert "if (!tasks.iconsOnly && !Plasmoid.configuration.separateLaunchers" not in taskmanager_qml
     plasmoids_dir = OFFLINE_DIR / "plasmoids"
     real_ids = {
         json.loads((p / "metadata.json").read_text())["KPlugin"]["Id"]

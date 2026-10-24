@@ -168,7 +168,7 @@ PlasmoidItem {
         sortMode: sortModeEnumValue(Plasmoid.configuration.sortingStrategy)
         launchInPlace: tasks.iconsOnly && Plasmoid.configuration.sortingStrategy === 1
         separateLaunchers: {
-            if (!tasks.iconsOnly && !Plasmoid.configuration.separateLaunchers
+            if (!Plasmoid.configuration.separateLaunchers
                 && Plasmoid.configuration.sortingStrategy === 1) {
                 return false;
             }

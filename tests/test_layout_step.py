@@ -117,8 +117,19 @@ plugin=org.kde.plasma.marginsseparator
 
 [Containments][4][General]
 AppletOrder=5
+
+[Containments][6]
+plugin=org.kde.panel
+
+[Containments][6][Applets][7]
+plugin=org.kde.mac.tahoe.liquid.icontasks
+
+[Containments][6][Applets][8]
+plugin=org.kde.plasma.marginsseparator
 """)
-    monkeypatch.setattr(layout, "_evaluate_layout_script", lambda script: True)
+    evaluated = []
+    monkeypatch.setattr(layout, "_evaluate_layout_script",
+                        lambda script: evaluated.append(script) or True)
 
     assert layout._remove_dock_margin_separators()
     result = config.read_text()
@@ -126,6 +137,9 @@ AppletOrder=5
     assert "[Containments][1][Applets][3]" not in result
     assert "[Containments][4][Applets][5]" in result
     assert "AppletOrder=5\n" in result
+    assert "[Containments][6][Applets][8]" not in result
+    assert "org.kde.mac.tahoe.liquid.icontasks" in evaluated[0]
+    assert "widget.remove()" in evaluated[0]
 
 
 def test_reset_with_pins_writes_launchers_into_script(monkeypatch):

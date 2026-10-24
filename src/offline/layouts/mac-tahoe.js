@@ -109,6 +109,7 @@ for (var screen = 0; screen < screenCount; screen++) {
     // Filled by layout.py from the user's existing taskbar pins, applied to
     // every dock across every screen (see _append_launcher_restore).
     tasks.writeConfig("launchers", "");
+    tasks.writeConfig("separateLaunchers", false);
 
     dock.addWidget("org.kde.mac-tahoe-liquid-kde.trashcan");
 }

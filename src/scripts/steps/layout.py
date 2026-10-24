@@ -332,14 +332,13 @@ def _remove_dock_margin_separators() -> bool:
             re.MULTILINE,
         )
         order = order_pattern.search(block)
-        if not order:
-            continue
-        order_ids = order.group(2).split(";")
-        block = order_pattern.sub(
-            lambda match: match.group(1) + "AppletOrder=" + ";".join(
-                item for item in order_ids if item not in separators
-            ), block,
-        )
+        if order:
+            order_ids = order.group(2).split(";")
+            block = order_pattern.sub(
+                lambda match: match.group(1) + "AppletOrder=" + ";".join(
+                    item for item in order_ids if item not in separators
+                ), block,
+            )
         for applet_id in separators:
             block = re.sub(
                 rf"^\[Containments\]\[{panel_id}\]\[Applets\]\[{applet_id}\]"
@@ -350,7 +349,16 @@ def _remove_dock_margin_separators() -> bool:
         changed = True
     if changed:
         appletsrc.write_text(text, encoding="utf-8")
-        _evaluate_layout_script("panels().forEach(function (panel) { panel.reload(); });")
+        _evaluate_layout_script(
+            "panels().forEach(function (panel) { "
+            "var isDock = panel.widgetIds.some(function (id) { "
+            "var widget = panel.widgetById(id); "
+            "return widget && widget.type === 'org.kde.mac.tahoe.liquid.icontasks'; "
+            "}); if (isDock) panel.widgetIds.slice().forEach(function (id) { "
+            "var widget = panel.widgetById(id); "
+            "if (widget && widget.type === 'org.kde.plasma.marginsseparator') widget.remove(); "
+            "}); });"
+        )
     return changed
 
 
