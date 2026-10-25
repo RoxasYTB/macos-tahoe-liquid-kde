@@ -25,7 +25,7 @@ remains bounded to prevent folds in the backdrop.
 Chromatic dispersion is deliberately restrained to 1 px: stronger per-channel
 offsets create colored fringes that read as broken edges rather than clear glass.
 The window lens also adds a directional Fresnel/specular reflection derived
-from its surface normal. Its tighter specular lobe follows the curved pane;
+from its surface normal. Its softened specular lobe follows the curved pane;
 its tint blends with the refracted backdrop color, so
 nearby content colors influence the reflection; intensity follows **Highlight
 strength**.
@@ -100,7 +100,8 @@ cannot silently fold the sampled backdrop as its aspect ratio or scale changes.
 
 To render a deterministic optical comparison, run
 `MTTKDE_GLASS_SHADER_CAPTURE_DIR=/tmp/liquidglass-optics pytest -q tests/test_glass_presets.py -k native_glass_shader_pixels`.
-It writes a flat control and 0.08/0.12/0.22/0.25 refraction PNGs over colored
+It writes a flat control, a black-background lens reflection and
+0.08/0.12/0.22/0.25 refraction PNGs over colored
 bands and diagonal lines, plus 0.12 blur comparisons at the 0.35/0.45/0.55/0.8
 offsets and 0.22/0.25 captures at 0.45. The probe checks that each stronger blur lowers edge energy while
 retaining the smooth lens mapping. It uses software OpenGL under Xvfb; it checks

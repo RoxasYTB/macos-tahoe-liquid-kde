@@ -589,6 +589,12 @@ int main(int argc, char **argv)
         require(qRed(reflectedLens.pixel(width / 2, height / 2))
                     > qRed(flatBlackGlass.pixel(width / 2, height / 2)) + 10,
                 QStringLiteral("Lens reflection must catch the simulated light on a dark background"));
+        const QByteArray reflectionCaptureDirectory = qgetenv("MTTKDE_GLASS_SHADER_CAPTURE_DIR");
+        if (!reflectionCaptureDirectory.isEmpty()) {
+            const QString directory = QString::fromLocal8Bit(reflectionCaptureDirectory);
+            require(reflectedLens.save(directory + "/lens-reflection-black.png"),
+                    QStringLiteral("Could not save the lens reflection capture"));
+        }
         shader.setUniformValue("magnifyGlassStrength", 0.08f);
         auto reflectionTint = [&](const QColor &backdropColor) {
             backdrop.fill(backdropColor);

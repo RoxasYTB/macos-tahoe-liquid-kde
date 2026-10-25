@@ -145,8 +145,8 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "float refractiveIndex = 1.45" in distort
     highlight = (ROOT / "src/shaders/highlight.glsl").read_text(encoding="utf-8")
     assert "float fresnel = 0.035 + 0.965 * fresnelSquare * fresnelSquare * fresnelBase" in highlight
-    assert "float specular = specularThirtySecond * specularThirtySecond" in highlight
-    assert "0.30 * fresnel + 2.0 * specular" in highlight
+    assert "float specular = specularSixteenth * specularSixteenth" in highlight
+    assert "0.30 * fresnel + 0.8 * specular" in highlight
     assert "mix(vec3(0.72, 0.86, 1.0), clamp(color, 0.0, 1.0), 0.65)" in highlight
     assert "vec2 bezelOffsetPx = refractedRay.xy / rayDepth * slabThickness * fresnelTransmission" in distort
     assert "float rimFade = smoothstep(0.0, max(rimFadeWidth, 1.0), inset)" in distort
