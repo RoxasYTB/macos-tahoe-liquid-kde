@@ -524,11 +524,13 @@ int main(int argc, char **argv)
             const QString directory = QString::fromLocal8Bit(captureDirectory);
             require(QDir().mkpath(directory), QStringLiteral("Could not create shader capture directory"));
             require(flatPattern.save(directory + "/lens-flat.png"), QStringLiteral("Could not save flat shader capture"));
-            for (const float strength : {0.08f, 0.12f}) {
+            for (const float strength : {0.08f, 0.12f, 0.22f, 0.25f}) {
                 shader.setUniformValue("magnifyGlassStrength", strength);
                 shader.setUniformValue("offset", 0.0f);
                 const auto lensPattern = render().convertToFormat(QImage::Format_RGBA8888);
-                const QString name = QStringLiteral("lens-%1.png").arg(strength == 0.08f ? "008" : "012");
+                const QString strengthName = strength == 0.08f ? "008"
+                    : strength == 0.12f ? "012" : strength == 0.22f ? "022" : "025";
+                const QString name = QStringLiteral("lens-%1.png").arg(strengthName);
                 require(lensPattern.save(directory + "/" + name), QStringLiteral("Could not save refracted shader capture"));
                 if (strength == 0.12f) {
                     shader.setUniformValue("offset", 0.2625f);
@@ -547,7 +549,7 @@ int main(int argc, char **argv)
                             QStringLiteral("Could not save fine liquid glass capture"));
                     require(lensBlur080.save(directory + "/lens-012-blur-080.png"),
                             QStringLiteral("Could not save stronger liquid glass capture"));
-                } else {
+                } else if (strength == 0.08f) {
                     shader.setUniformValue("offset", 0.11f);
                     const auto lensDefaultBlur = render().convertToFormat(QImage::Format_RGBA8888);
                     require(lensDefaultBlur.save(directory + "/lens-008-default-blur.png"),
@@ -560,6 +562,11 @@ int main(int argc, char **argv)
                     const auto lensBlur045 = render().convertToFormat(QImage::Format_RGBA8888);
                     require(lensBlur045.save(directory + "/lens-008-blur-045.png"),
                             QStringLiteral("Could not save liquid glass blur capture"));
+                } else {
+                    shader.setUniformValue("offset", 0.3375f);
+                    const auto lensBlur045 = render().convertToFormat(QImage::Format_RGBA8888);
+                    require(lensBlur045.save(directory + QStringLiteral("/lens-%1-blur-045.png").arg(strengthName)),
+                            QStringLiteral("Could not save high-strength liquid glass capture"));
                 }
             }
         }

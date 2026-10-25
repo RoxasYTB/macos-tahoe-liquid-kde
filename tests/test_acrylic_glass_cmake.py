@@ -136,6 +136,7 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "outwardNormal / max(bezelWidth, 1.0)" in distort
     assert "out vec3 surfaceNormal" in distort
     assert "float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.25)" in distort
+    assert "* min(1.0, minSurfaceSize / 128.0)" in distort
     config_ui = (ROOT / "src/kcm/config.ui").read_text(encoding="utf-8")
     assert '<double>0.25</double>' in config_ui
     assert "bezelWidth * lensStrength * 2.0" in distort
@@ -154,7 +155,7 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "domeDepth * domeGradient" in distort
     assert "domeOffsetPx" not in distort
     assert "float maxDisplacementPx = min(max(refractionWidth * 0.8, minSurfaceSize * 0.06)" in distort
-    assert "minSurfaceSize * 0.05" in distort
+    assert "minSurfaceSize * 0.08" in distort
     assert "float limitBlend = smoothstep(limitStartPx, maxDisplacementPx, displacementPx)" in distort
     assert "if (displacementPx > maxDisplacementPx)" not in distort
     assert "float axisBlend = smoothstep(-axisBlendWidth, axisBlendWidth, q.x - q.y)" in sdf

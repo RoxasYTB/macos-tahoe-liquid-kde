@@ -82,10 +82,11 @@ adds broad convex-dome magnification across the pane; its analytic gradient
 feeds the same surface normal used by refraction and highlights. Blending
 neighboring edge distances avoids a crease where the nearest edge changes; the
 profile has zero slope at the dome's optical centre and rim. The sampled
-displacement is capped at 5% of the smaller surface dimension; shader probes
+displacement is capped at 8% of the smaller surface dimension; shader probes
 check the mapping Jacobian at default and maximum lens strength on the reference
 surface and five smaller popup sizes, down to 64×48 px, at both the default
-strength of 0.22 and the maximum strength of 0.25. Refraction strength is
+strength of 0.22 and the maximum strength of 0.25. Optical strength scales down
+with aperture below 128 px to keep small popups from folding. Refraction strength is
 bounded to 0.25 for this profile. Apple describes Liquid Glass as dynamic
 lensing that bends and concentrates light, but does not publish
 its renderer or numeric shader model. This is therefore a transparent,
@@ -98,9 +99,9 @@ cannot silently fold the sampled backdrop as its aspect ratio or scale changes.
 
 To render a deterministic optical comparison, run
 `MTTKDE_GLASS_SHADER_CAPTURE_DIR=/tmp/liquidglass-optics pytest -q tests/test_glass_presets.py -k native_glass_shader_pixels`.
-It writes a flat control, 0.08/0.12 refraction PNGs, and 0.12 lens captures at
-the 0.35/0.45/0.55/0.8-mapped blur offsets over colored bands and diagonal
-lines. The probe checks that each stronger blur lowers edge energy while
+It writes a flat control and 0.08/0.12/0.22/0.25 refraction PNGs over colored
+bands and diagonal lines, plus 0.12 blur comparisons at the 0.35/0.45/0.55/0.8
+offsets and 0.22/0.25 captures at 0.45. The probe checks that each stronger blur lowers edge energy while
 retaining the smooth lens mapping. It uses software OpenGL under Xvfb; it checks
 shader behavior, not KWin's live GPU/compositor integration.
 
