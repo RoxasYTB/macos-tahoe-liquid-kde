@@ -128,9 +128,11 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "float bezelWidth = min(max(refractionWidth, 1.0), apertureRadius)" in distort
     assert "float inset = min(max(-signedDistance, 0.0), bezelWidth)" in distort
     assert "float profilePosition = inset / max(bezelWidth, 1.0)" in distort
-    assert "float profileHeight = profilePosition * profilePosition" in distort
-    assert "3.0 - 2.0 * profilePosition" in distort
-    assert "float profileDerivative = 6.0 * profilePosition * profileRemainder" in distort
+    assert "float smoothProfile = profilePosition * profilePosition" in distort
+    assert "float convexSquircle = pow(squircleRadicand, 0.25)" in distort
+    assert "float convexBlend = 0.25 * smoothstep(112.0, 128.0, minSurfaceSize)" in distort
+    assert "float profileHeight = mix(smoothProfile, convexSquircle, convexBlend)" in distort
+    assert "float profileDerivative = mix(smoothDerivative, convexSquircleDerivative, convexBlend)" in distort
     assert "float slabThickness = depth * 0.35 + height" in distort
     assert "vec2 heightGradient = -depth * profileDerivative" in distort
     assert "outwardNormal / max(bezelWidth, 1.0)" in distort

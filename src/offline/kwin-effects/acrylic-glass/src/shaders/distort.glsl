@@ -54,9 +54,17 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     float inset = min(max(-signedDistance, 0.0), bezelWidth);
     float profilePosition = inset / max(bezelWidth, 1.0);
     float profileRemainder = 1.0 - profilePosition;
-    float profileHeight = profilePosition * profilePosition
+    float smoothProfile = profilePosition * profilePosition
         * (3.0 - 2.0 * profilePosition);
-    float profileDerivative = 6.0 * profilePosition * profileRemainder;
+    float smoothDerivative = 6.0 * profilePosition * profileRemainder;
+    float squircleRemainder = 1.0 - smoothProfile;
+    float squircleRadicand = max(1.0 - pow(squircleRemainder, 4.0), 0.0);
+    float convexSquircle = pow(squircleRadicand, 0.25);
+    float convexSquircleDerivative = pow(squircleRemainder, 3.0) * smoothDerivative
+        / max(pow(squircleRadicand, 0.75), 0.001);
+    float convexBlend = 0.25 * smoothstep(112.0, 128.0, minSurfaceSize);
+    float profileHeight = mix(smoothProfile, convexSquircle, convexBlend);
+    float profileDerivative = mix(smoothDerivative, convexSquircleDerivative, convexBlend);
     vec2 normalizedPosition = surfacePosition / halfSize;
     float domeBase = max(1.0 - 0.72 * dot(normalizedPosition, normalizedPosition), 0.0);
     float domeProfile = domeBase * domeBase;

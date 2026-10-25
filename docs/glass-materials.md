@@ -74,7 +74,8 @@ screenshots and design guidance; they do not reproduce Apple's renderer.
 
 The X11 lens is a GPU height-field approximation: **Refraction width** sets a
 rounded-rectangle bezel, and a softly blended edge distance drives a convex
-squircle profile that rises from the silhouette and flattens into the pane.
+profile with a convex-squircle blend that reaches 25% on surfaces at least
+128 px across, then fades out on smaller panes to preserve a fold-free mapping.
 GLSL `refract` applies Snell's law at that surface normal; the ray travels
 through the local base-plus-profile thickness, and Fresnel transmission reduces
 displacement toward grazing angles. A low-amplitude ellipsoidal height field
