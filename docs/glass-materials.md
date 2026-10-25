@@ -16,7 +16,7 @@ Both presets use a blur strength of 0.35 on the 0–20 scale: a very fine,
 restrained blur that keeps more backdrop detail visible through the lens. At
 the two finest levels, the first Kawase pass stays at native resolution instead
 of shrinking the backdrop. Their
-current optical defaults use a 42 px bezel and 0.22 lens strength; these are
+current optical defaults use a 56 px bezel and 0.25 lens strength; these are
 project-tuned values, not values supplied by Apple.
 Sub-unit blur settings now scale the finest sample spacing continuously down
 to zero, so values below 1.0 preserve more backdrop detail for the lens to bend.
@@ -85,8 +85,8 @@ neighboring edge distances avoids a crease where the nearest edge changes; the
 profile has zero slope at the dome's optical centre and rim. The sampled
 displacement is capped at 8% of the smaller surface dimension; shader probes
 check the mapping Jacobian at default and maximum lens strength on the reference
-surface and five smaller popup sizes, down to 64×48 px, at both the default
-strength of 0.22 and the maximum strength of 0.25. Optical strength scales down
+surface and five smaller popup sizes, down to 64×48 px, at both the previous
+0.22 setting and the default/maximum strength of 0.25. Optical strength scales down
 with aperture below 128 px to keep small popups from folding. Refraction strength is
 bounded to 0.25 for this profile. Apple describes Liquid Glass as dynamic
 lensing that bends and concentrates light, but does not publish
