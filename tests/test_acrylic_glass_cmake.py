@@ -135,10 +135,10 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "vec2 heightGradient = -depth * profileDerivative" in distort
     assert "outwardNormal / max(bezelWidth, 1.0)" in distort
     assert "out vec3 surfaceNormal" in distort
-    assert "float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.30)" in distort
+    assert "float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.25)" in distort
     config_ui = (ROOT / "src/kcm/config.ui").read_text(encoding="utf-8")
-    assert '<double>0.30</double>' in config_ui
-    assert "bezelWidth * lensStrength * 3.0" in distort
+    assert '<double>0.25</double>' in config_ui
+    assert "bezelWidth * lensStrength * 2.0" in distort
     assert "float refractiveIndex = 1.45" in distort
     highlight = (ROOT / "src/shaders/highlight.glsl").read_text(encoding="utf-8")
     assert "float fresnel = 0.035 + 0.965 * fresnelSquare * fresnelSquare * fresnelBase" in highlight
@@ -150,11 +150,11 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     assert "float domeProfile = domeBase * domeBase" in distort
     assert "float domeBase = max(1.0 - 0.72 * dot(normalizedPosition, normalizedPosition), 0.0)" in distort
     assert "vec2 domeGradient = -2.88 * domeBase * normalizedPosition / halfSize" in distort
-    assert "float domeDepth = minSurfaceSize * lensStrength * 2.625" in distort
+    assert "float domeDepth = minSurfaceSize * lensStrength * 1.5" in distort
     assert "domeDepth * domeGradient" in distort
     assert "domeOffsetPx" not in distort
     assert "float maxDisplacementPx = min(max(refractionWidth * 0.8, minSurfaceSize * 0.06)" in distort
-    assert "minSurfaceSize * 0.20" in distort
+    assert "minSurfaceSize * 0.05" in distort
     assert "float limitBlend = smoothstep(limitStartPx, maxDisplacementPx, displacementPx)" in distort
     assert "if (displacementPx > maxDisplacementPx)" not in distort
     assert "float axisBlend = smoothstep(-axisBlendWidth, axisBlendWidth, q.x - q.y)" in sdf

@@ -16,11 +16,11 @@ Both presets use a blur strength of 0.35 on the 0–20 scale: a very fine,
 restrained blur that keeps more backdrop detail visible through the lens. At
 the two finest levels, the first Kawase pass stays at native resolution instead
 of shrinking the backdrop. Their
-current optical defaults use a 64 px bezel and 0.12 lens strength; these are
+current optical defaults use a 42 px bezel and 0.22 lens strength; these are
 project-tuned values, not values supplied by Apple.
 Sub-unit blur settings now scale the finest sample spacing continuously down
 to zero, so values below 1.0 preserve more backdrop detail for the lens to bend.
-Refraction strength is adjustable to 0.12; sampled displacement
+Refraction strength is adjustable to 0.25; sampled displacement
 remains bounded to prevent folds in the backdrop.
 Chromatic dispersion is deliberately restrained to 1 px: stronger per-channel
 offsets create colored fringes that read as broken edges rather than clear glass.
@@ -82,14 +82,15 @@ adds broad convex-dome magnification across the pane; its analytic gradient
 feeds the same surface normal used by refraction and highlights. Blending
 neighboring edge distances avoids a crease where the nearest edge changes; the
 profile has zero slope at the dome's optical centre and rim. The sampled
-displacement is capped at 20% of the smaller surface dimension; shader probes
+displacement is capped at 5% of the smaller surface dimension; shader probes
 check the mapping Jacobian at default and maximum lens strength on the reference
-surface and five smaller popup sizes, down to 64×48 px. Refraction strength is
-bounded to 0.12 for this profile. Apple describes Liquid Glass as dynamic
+surface and five smaller popup sizes, down to 64×48 px, at both the default
+strength of 0.22 and the maximum strength of 0.25. Refraction strength is
+bounded to 0.25 for this profile. Apple describes Liquid Glass as dynamic
 lensing that bends and concentrates light, but does not publish
 its renderer or numeric shader model. This is therefore a transparent,
 testable approximation of general lens optics, not Apple's private shader or a
-claim of pixel parity. The current dome depth is tuned to 2.625 times the
+claim of pixel parity. The current dome depth is tuned to 1.5 times the
 minimum surface dimension times lens strength. The shader pixel probe checks a
 non-negative normalized mapping Jacobian at both the default and maximum lens
 strength on the reference surface and five smaller popup sizes, so the lens

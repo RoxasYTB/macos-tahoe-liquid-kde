@@ -155,7 +155,7 @@
              <string>Bend the background near the glass edge. 0 disables distortion.</string>
             </property>
             <property name="maximum">
-             <double>0.30</double>
+             <double>0.25</double>
             </property>
             <property name="singleStep">
              <double>0.001</double>

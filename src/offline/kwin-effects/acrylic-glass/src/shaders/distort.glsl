@@ -46,9 +46,9 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     vec2 outwardNormal;
     float signedDistance = lgLensDistanceAndNormal(surfacePosition, halfSize, cornerRadius,
                                                    squircleBlend, outwardNormal);
-    float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.30);
+    float lensStrength = clamp(magnifyGlassStrength, 0.0, 0.25);
     float bezelWidth = min(max(refractionWidth, 1.0), apertureRadius);
-    float depth = min(bezelWidth * lensStrength * 3.0, bezelWidth * 1.25);
+    float depth = min(bezelWidth * lensStrength * 2.0, bezelWidth * 1.25);
     float inset = min(max(-signedDistance, 0.0), bezelWidth);
     float profilePosition = inset / max(bezelWidth, 1.0);
     float profileRemainder = 1.0 - profilePosition;
@@ -60,7 +60,7 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     float domeBase = max(1.0 - 0.72 * dot(normalizedPosition, normalizedPosition), 0.0);
     float domeProfile = domeBase * domeBase;
     vec2 domeGradient = -2.88 * domeBase * normalizedPosition / halfSize;
-    float domeDepth = minSurfaceSize * lensStrength * 2.625;
+    float domeDepth = minSurfaceSize * lensStrength * 1.5;
     float height = depth * profileHeight + domeDepth * domeProfile;
     vec2 heightGradient = -depth * profileDerivative
         * outwardNormal / max(bezelWidth, 1.0) + domeDepth * domeGradient;
@@ -80,7 +80,7 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     vec2 bezelOffsetPx = refractedRay.xy / rayDepth * slabThickness * fresnelTransmission * rimFade;
     vec2 offsetPx = bezelOffsetPx;
     float maxDisplacementPx = min(max(refractionWidth * 0.8, minSurfaceSize * 0.06),
-                                  minSurfaceSize * 0.20);
+                                  minSurfaceSize * 0.05);
     float displacementPx = length(offsetPx);
     float limitStartPx = maxDisplacementPx * 0.6;
     float limitBlend = smoothstep(limitStartPx, maxDisplacementPx, displacementPx);

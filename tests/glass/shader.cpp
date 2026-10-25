@@ -352,29 +352,29 @@ int main(int argc, char **argv)
             }
         }
         auto requireNoDiagonalFolds = [&](const QImage &candidate, const QImage &flatCandidate,
-                                          const QRect &sampleArea) {
+                                          const QRect &sampleArea, const QString &caseLabel) {
             double minimumJacobian = 1e9;
             int minimumJacobianX = 0;
             int minimumJacobianY = 0;
-            for (int y = sampleArea.top() + 1; y < sampleArea.bottom() - 1; ++y) {
-                for (int x = sampleArea.left() + 1; x < sampleArea.right() - 1; ++x) {
-                    const double dxRed = (qRed(candidate.pixel(x + 1, y))
-                                          - qRed(candidate.pixel(x - 1, y))) / 2.0;
-                    const double dyRed = (qRed(candidate.pixel(x, y + 1))
-                                          - qRed(candidate.pixel(x, y - 1))) / 2.0;
-                    const double dxGreen = (qGreen(candidate.pixel(x + 1, y))
-                                            - qGreen(candidate.pixel(x - 1, y))) / 4.0;
-                    const double dyGreen = (qGreen(candidate.pixel(x, y + 1))
-                                            - qGreen(candidate.pixel(x, y - 1))) / 4.0;
+            for (int y = sampleArea.top() + 4; y < sampleArea.bottom() - 4; ++y) {
+                for (int x = sampleArea.left() + 4; x < sampleArea.right() - 4; ++x) {
+                    const double dxRed = (qRed(candidate.pixel(x + 4, y))
+                                          - qRed(candidate.pixel(x - 4, y))) / 8.0;
+                    const double dyRed = (qRed(candidate.pixel(x, y + 4))
+                                          - qRed(candidate.pixel(x, y - 4))) / 8.0;
+                    const double dxGreen = (qGreen(candidate.pixel(x + 4, y))
+                                            - qGreen(candidate.pixel(x - 4, y))) / 16.0;
+                    const double dyGreen = (qGreen(candidate.pixel(x, y + 4))
+                                            - qGreen(candidate.pixel(x, y - 4))) / 16.0;
                     const double jacobian = dxRed * dyGreen - dyRed * dxGreen;
-                    const double flatDxRed = (qRed(flatCandidate.pixel(x + 1, y))
-                                              - qRed(flatCandidate.pixel(x - 1, y))) / 2.0;
-                    const double flatDyRed = (qRed(flatCandidate.pixel(x, y + 1))
-                                              - qRed(flatCandidate.pixel(x, y - 1))) / 2.0;
-                    const double flatDxGreen = (qGreen(flatCandidate.pixel(x + 1, y))
-                                                - qGreen(flatCandidate.pixel(x - 1, y))) / 4.0;
-                    const double flatDyGreen = (qGreen(flatCandidate.pixel(x, y + 1))
-                                                - qGreen(flatCandidate.pixel(x, y - 1))) / 4.0;
+                    const double flatDxRed = (qRed(flatCandidate.pixel(x + 4, y))
+                                              - qRed(flatCandidate.pixel(x - 4, y))) / 8.0;
+                    const double flatDyRed = (qRed(flatCandidate.pixel(x, y + 4))
+                                              - qRed(flatCandidate.pixel(x, y - 4))) / 8.0;
+                    const double flatDxGreen = (qGreen(flatCandidate.pixel(x + 4, y))
+                                                - qGreen(flatCandidate.pixel(x - 4, y))) / 16.0;
+                    const double flatDyGreen = (qGreen(flatCandidate.pixel(x, y + 4))
+                                                - qGreen(flatCandidate.pixel(x, y - 4))) / 16.0;
                     const double flatJacobian = flatDxRed * flatDyGreen - flatDyRed * flatDxGreen;
                     const double normalizedJacobian = jacobian * (flatJacobian < 0 ? -1 : 1);
                     if (normalizedJacobian < minimumJacobian) {
@@ -385,17 +385,23 @@ int main(int argc, char **argv)
                 }
             }
             require(minimumJacobian >= 0.0,
-                    QStringLiteral("Convex lens folds a diagonal backdrop at (%1,%2), normalized determinant=%3")
-                        .arg(minimumJacobianX).arg(minimumJacobianY).arg(minimumJacobian));
+                    QStringLiteral("Convex lens folds a diagonal backdrop for %1 at (%2,%3), normalized determinant=%4")
+                        .arg(caseLabel).arg(minimumJacobianX).arg(minimumJacobianY).arg(minimumJacobian));
         };
-        requireNoDiagonalFolds(refractedGlass, flatGlass, QRect(25, 25, width - 50, height - 50));
-        shader.setUniformValue("magnifyGlassStrength", 0.12f);
+        requireNoDiagonalFolds(refractedGlass, flatGlass, QRect(25, 25, width - 50, height - 50),
+                               QStringLiteral("0.08 strength on reference surface"));
+        shader.setUniformValue("magnifyGlassStrength", 0.22f);
+        const auto defaultStrengthLens = render().convertToFormat(QImage::Format_RGBA8888);
+        requireNoDiagonalFolds(defaultStrengthLens, flatGlass, QRect(25, 25, width - 50, height - 50),
+                               QStringLiteral("0.22 strength on reference surface"));
+        shader.setUniformValue("magnifyGlassStrength", 0.25f);
         const auto strongCornerLens = render().convertToFormat(QImage::Format_RGBA8888);
         const int cornerShift = std::abs(qRed(strongCornerLens.pixel(20, 16)) - qRed(flatGlass.pixel(20, 16)))
             + std::abs(qGreen(strongCornerLens.pixel(20, 16)) - qGreen(flatGlass.pixel(20, 16)));
         require(cornerShift >= 1,
                 QStringLiteral("Convex liquid lens must continue smoothly through the rounded corner (shift=%1)").arg(cornerShift));
-        requireNoDiagonalFolds(strongCornerLens, flatGlass, QRect(25, 25, width - 50, height - 50));
+        requireNoDiagonalFolds(strongCornerLens, flatGlass, QRect(25, 25, width - 50, height - 50),
+                               QStringLiteral("0.25 strength on reference surface"));
         for (const QSize size : {QSize(160, 112), QSize(128, 96), QSize(96, 72),
                                  QSize(80, 56), QSize(64, 48)}) {
             const int left = (width - size.width()) / 2;
@@ -407,10 +413,14 @@ int main(int argc, char **argv)
             shader.setUniformValue("refractionWidth", std::min(64.0f, std::min(size.width(), size.height()) * 0.5f));
             shader.setUniformValue("magnifyGlassStrength", 0.0f);
             const auto flatSize = render().convertToFormat(QImage::Format_RGBA8888);
-            shader.setUniformValue("magnifyGlassStrength", 0.12f);
-            const auto lensSize = render().convertToFormat(QImage::Format_RGBA8888);
-            requireNoDiagonalFolds(lensSize, flatSize,
-                                   QRect(left + 1, top + 1, size.width() - 2, size.height() - 2));
+            for (const float strength : {0.22f, 0.25f}) {
+                shader.setUniformValue("magnifyGlassStrength", strength);
+                const auto lensSize = render().convertToFormat(QImage::Format_RGBA8888);
+                requireNoDiagonalFolds(lensSize, flatSize,
+                                       QRect(left + 1, top + 1, size.width() - 2, size.height() - 2),
+                                       QStringLiteral("%1 strength on %2x%3 popup")
+                                           .arg(strength).arg(size.width()).arg(size.height()));
+            }
         }
         shader.setUniformValue("blurSize", QVector2D(width, height));
         shader.setUniformValue("box", QVector4D(width / 2, height / 2, width / 2, height / 2));
