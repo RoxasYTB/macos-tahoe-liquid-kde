@@ -142,6 +142,35 @@ int main() {
         assert(std::abs(client->radius - radius) <= 1);
         assert(!clientBlurShape(hole));
     }
+    // Separate panel cards must each retain their own optical geometry.
+    const QRegion cards = rasterizedRoundedRect(QRect(0, 0, 140, 62), 31, 8)
+        | rasterizedRoundedRect(QRect(0, 75, 140, 64), 32, 8)
+        | rasterizedRoundedRect(QRect(152, 0, 140, 139), 28, 8);
+    const auto cardShapes = clientBlurShapes(cards);
+    assert(cardShapes.size() == 3);
+    assert(std::any_of(cardShapes.begin(), cardShapes.end(), [](const auto &shape) { return shape.bounds == QRect(0, 0, 140, 62); }));
+    assert(std::any_of(cardShapes.begin(), cardShapes.end(), [](const auto &shape) { return shape.bounds == QRect(0, 75, 140, 64); }));
+    assert(std::any_of(cardShapes.begin(), cardShapes.end(), [](const auto &shape) { return shape.bounds == QRect(152, 0, 140, 139); }));
+    const auto wifiShape = std::find_if(cardShapes.begin(), cardShapes.end(), [](const auto &shape) { return shape.bounds == QRect(0, 0, 140, 62); });
+    assert(wifiShape != cardShapes.end() && wifiShape->radius == 31.0f);
+    const std::vector<std::pair<QRect, int>> controlCards = {
+        {QRect(0, 0, 140, 62), 31}, {QRect(151, 0, 141, 139), 32},
+        {QRect(0, 74, 140, 65), 32}, {QRect(0, 150, 140, 63), 31},
+        {QRect(151, 150, 65, 65), 32}, {QRect(227, 150, 65, 65), 32},
+        {QRect(0, 227, 64, 65), 32}, {QRect(75, 227, 65, 65), 32},
+        {QRect(151, 227, 141, 65), 32}, {QRect(0, 302, 292, 65), 32},
+        {QRect(0, 377, 292, 65), 32}, {QRect(98, 456, 95, 26), 13},
+    };
+    QRegion panelMask;
+    for (const auto &[bounds, radius] : controlCards) panelMask |= rasterizedRoundedRect(bounds, radius, 8);
+    const auto panelShapes = clientBlurShapes(panelMask);
+    assert(panelShapes.size() == controlCards.size());
+    for (const auto &[bounds, radius] : controlCards) {
+        const auto shape = std::find_if(panelShapes.begin(), panelShapes.end(), [&](const auto &candidate) {
+            return candidate.bounds == bounds;
+        });
+        assert(shape != panelShapes.end() && std::abs(shape->radius - radius) <= 2.0f);
+    }
     // Kvantum's native integer ellipse mask has asymmetric top/bottom rows.
     // The real 249x274 menu with radius 9 must not fall back to hard steps.
     for (int radius : {6, 9, 16, 22, 52}) {
@@ -173,8 +202,10 @@ int main() {
         assert(weight >= previous);
         previous = weight;
     }
-    assert(qRed(progressive.pixel(0, 10)) < 16);
+    assert(qRed(progressive.pixel(0, 10)) < 32);
     assert(qRed(progressive.pixel(5, 10)) > qRed(progressive.pixel(0, 10)));
+    assert(qRed(progressive.pixel(4, 10)) < 255);
+    assert(qRed(progressive.pixel(5, 10)) == 255);
     assert(qRed(progressive.pixel(9, 10)) == 255);
     const auto square = clientBlurShape(QRegion(QRect(8, 12, 300, 32)));
     assert(square && square->radius == 0 && square->bounds == QRect(8, 12, 300, 32));
@@ -212,7 +243,7 @@ def test_liquid_glass_keeps_live_backdrop_colors_and_smooth_falloff(repo):
     shader = (repo / "src/offline/kwin-effects/acrylic-glass/src/shaders/glass.glsl").read_text()
     assert "m_darkGradientOverlay = false;" in source
     assert "const bool nativeResolutionBlur = !dockSurface && m_nativeResolutionBlur;" in source
-    assert "blurFalloffMask(const QRegion &region, int fadePixels = 10)" in shape
+    assert "blurFalloffMask(const QRegion &region, int fadePixels = 6)" in shape
     assert "t * t * (3.0f - 2.0f * t)" in shape
     assert "blitFromRenderTarget(renderTarget, viewport" in source
     assert "surface.rgb = surface.rgb * (1.0 - tintAlpha) + tint;" in shader

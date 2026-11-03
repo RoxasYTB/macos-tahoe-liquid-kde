@@ -683,6 +683,7 @@ void BlurEffect::updateBlurRegion(EffectWindow* w)
         data.content = content;
         data.frame = frame;
         data.clientShape.reset();
+        data.clientShapes.clear();
         if (!w->decoration() && content.has_value() && !frame.has_value()
             && (explicitClientBlurRegion || w->isDock() || w->isTooltip() || w->isMenu()
                 || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup() || w->isPopupWindow())) {
@@ -690,7 +691,13 @@ void BlurEffect::updateBlurRegion(EffectWindow* w)
             for (const Rect &rect : content->rects()) {
                 clientRegion += QRect(rect);
             }
-            data.clientShape = clientBlurShape(clientRegion & w->contentsRect().toRect());
+            const QRegion clippedClientRegion = clientRegion & w->contentsRect().toRect();
+            data.clientShapes = clientBlurShapes(clippedClientRegion);
+            if (data.clientShapes.size() == 1) {
+                data.clientShape = data.clientShapes.front();
+            } else if (data.clientShapes.empty()) {
+                data.clientShape = clientBlurShape(clippedClientRegion);
+            }
         }
         data.colorMatrix = colorTransformMatrix(saturation.value_or(1.0), contrast.value_or(1.0), 1.0);
         data.windowEffect = ItemEffect(w->windowItem());
@@ -1743,7 +1750,51 @@ void BlurEffect::blur(
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-    vbo->draw(GL_TRIANGLES, 6, vertexCount);
+    auto drawIndependentClientShapes = [&](GLShader *shader) {
+        if (blurInfo.clientShapes.size() <= 1) {
+            vbo->draw(GL_TRIANGLES, 6, vertexCount);
+            return;
+        }
+        for (const ClientBlurShape &shape : blurInfo.clientShapes) {
+            const QRectF shapeRect = shape.surfaceRect().translated(w->pos());
+            const QRectF transformedShapeRect {
+                w->x() + (shapeRect.x() - w->x()) * data.xScale() + data.xTranslation(),
+                w->y() + (shapeRect.y() - w->y()) * data.yScale() + data.yTranslation(),
+                shapeRect.width() * data.xScale(), shapeRect.height() * data.yScale(),
+            };
+            const QRectF shapeBoxF = agSnapToPixelGridF(scaledRect(transformedShapeRect, viewport.scale()))
+#if defined(GLASS_X11)
+                .translated(-deviceBackgroundRect.topLeft());
+#else
+                .translated(-scaledBackgroundRect.topLeft());
+#endif
+            const QRectF shapeBox(std::floor(shapeBoxF.x()), std::floor(shapeBoxF.y()),
+                                  std::floor(shapeBoxF.width()), std::floor(shapeBoxF.height()));
+            const float radius = shape.cornerRadius() * viewport.scale();
+            if (shader == m_noisePass.shader.get()) {
+                shader->setUniform(m_noisePass.boxLocation,
+                    QVector4D(shapeBox.center().x(), shapeBox.center().y(), shapeBox.width() * 0.5, shapeBox.height() * 0.5));
+                shader->setUniform(m_noisePass.cornerRadiusLocation, QVector4D(radius, radius, radius, radius));
+                shader->setUniform(m_noisePass.cornerSquircleLocation, 0.0f);
+                shader->setUniform(m_noisePass.blurSizeLocation, QVector2D(shapeBox.width(), shapeBox.height()));
+            } else {
+                shader->setUniform(m_roundedOnscreenPass.boxLocation,
+                    QVector4D(shapeBox.center().x(), shapeBox.center().y(), shapeBox.width() * 0.5, shapeBox.height() * 0.5));
+                shader->setUniform(m_roundedOnscreenPass.cornerRadiusLocation, QVector4D(radius, radius, radius, radius));
+                shader->setUniform(m_roundedOnscreenPass.cornerSquircleLocation, 0.0f);
+                shader->setUniform(m_roundedOnscreenPass.blurSizeLocation, QVector2D(shapeBox.width(), shapeBox.height()));
+                // Each card is its own shallow glass lens. Reduce the broad
+                // centre dome and chromatic drift so nearby content bends
+                // mostly at the rim, like macOS Control Center capsules.
+                shader->setUniform(m_roundedOnscreenPass.magnifyGlassStrengthLocation,
+                                   m_magnifyGlassStrength * 0.55f);
+                shader->setUniform(m_roundedOnscreenPass.rgbDriftStrengthLocation,
+                                   float(m_rgbDriftStrength * viewport.scale() * 0.65f));
+            }
+            vbo->draw(GL_TRIANGLES, 6, vertexCount);
+        }
+    };
+    drawIndependentClientShapes(m_roundedOnscreenPass.shader.get());
 
     glDisable(GL_BLEND);
     glActiveTexture(GL_TEXTURE0);
@@ -1779,7 +1830,7 @@ void BlurEffect::blur(
                 modulation * m_materialOpacity * centerOpacity * (dockSurface ? 0.25f : 1.0f));
             noiseTexture->bind();
 
-            vbo->draw(GL_TRIANGLES, 6, vertexCount);
+            drawIndependentClientShapes(m_noisePass.shader.get());
 
             ShaderManager::instance()->popShader();
         }

@@ -79,6 +79,9 @@ struct BlurEffectData
     /** Client surface geometry, excluding transparent shadow margins. */
     std::optional<ClientBlurShape> clientShape;
 
+    /** Independent capsule geometries for clients that publish several cards. */
+    std::vector<ClientBlurShape> clientShapes;
+
     /**
      * Render scratch space keyed by the view it belongs to. Different
      * outputs can have different colour spaces / scales, so one shared

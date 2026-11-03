@@ -141,10 +141,66 @@ inline std::optional<ClientBlurShape> clientBlurShape(const QRegion &region)
     return std::nullopt;
 }
 
+// Split a client blur region into connected surfaces. Control panels often
+// publish several independent Liquid Glass cards through one X11 blur region;
+// treating their bounding box as a single rounded rectangle produces false
+// optical normals across the gaps between cards.
+inline std::vector<ClientBlurShape> clientBlurShapes(const QRegion &region)
+{
+    std::vector<QRect> rects;
+    rects.reserve(size_t(region.rectCount()));
+    for (const QRect &rect : region) rects.push_back(rect);
+    std::vector<uchar> visited(rects.size(), 0);
+    std::vector<ClientBlurShape> shapes;
+    std::vector<size_t> queue;
+    for (size_t seed = 0; seed < rects.size(); ++seed) {
+        if (visited[seed]) continue;
+        queue.clear();
+        queue.push_back(seed);
+        visited[seed] = 1;
+        QRegion component;
+        for (size_t i = 0; i < queue.size(); ++i) {
+            const QRect current = rects[queue[i]];
+            component += current;
+            for (size_t j = 0; j < rects.size(); ++j) {
+                if (visited[j]) continue;
+                if (current.adjusted(-1, -1, 1, 1).intersects(rects[j])) {
+                    visited[j] = 1;
+                    queue.push_back(j);
+                }
+            }
+        }
+        if (const auto shape = clientBlurShape(component)) {
+            shapes.push_back(*shape);
+            continue;
+        }
+        const QRect bounds = component.boundingRect();
+        if (bounds.isEmpty() || bounds.height() < 4) return {};
+        const QRect first = component.intersected(QRect(bounds.x(), bounds.y(), bounds.width(), 1)).boundingRect();
+        const QRect last = component.intersected(QRect(bounds.x(), bounds.bottom(), bounds.width(), 1)).boundingRect();
+        if (first.isEmpty() || last.isEmpty()) return {};
+        const int inset = std::max(0, first.left() - bounds.left());
+        const int estimate = qRound(inset + 0.5 + std::sqrt(inset));
+        const int maximum = std::min(bounds.width(), bounds.height()) / 2;
+        const int tolerance = std::max(4, int(std::ceil(std::sqrt(std::max(estimate, 1)) * 0.5)));
+        if (std::abs(bounds.right() - first.right() - inset) > tolerance
+            || std::abs(last.left() - first.left()) > tolerance
+            || std::abs(last.right() - first.right()) > tolerance) return {};
+        // FrameSvg uses superelliptical (squircle) masks. Fit their top inset
+        // to the nearest rounded-rect radius. Wide capsules use their exact
+        // half-height, while near-square cards use the squircle inset fit.
+        const int radius = bounds.width() >= bounds.height() * 3 / 2
+            ? bounds.height() / 2
+            : std::clamp(estimate, 0, maximum);
+        shapes.push_back(ClientBlurShape{bounds, float(radius), false});
+    }
+    return shapes;
+}
+
 // Build a per-pixel blur weight for the window's blur region. The blur stays
 // sharp at the glass edge and reaches full strength over a short inward
 // distance, avoiding a hard transition between blurred and crisp backdrop.
-inline QImage blurFalloffMask(const QRegion &region, int fadePixels = 10)
+inline QImage blurFalloffMask(const QRegion &region, int fadePixels = 6)
 {
     const QRect bounds = region.boundingRect();
     if (bounds.isEmpty()) {
