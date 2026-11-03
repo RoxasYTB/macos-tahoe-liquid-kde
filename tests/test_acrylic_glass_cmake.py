@@ -167,6 +167,10 @@ def test_glass_refraction_uses_continuous_sdf_lens_normals_in_both_shader_profil
     for shader_name in ("glass.glsl", "glass_core.glsl"):
         shader = (ROOT / "src/shaders" / shader_name).read_text(encoding="utf-8")
         assert "lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize," in shader
+        assert "uniform sampler2D sharpTex;" in shader
+        assert "uniform sampler2D blurFalloffTex;" in shader
+        assert "float blurWeight =" in shader and "blurFalloffTex, falloffUV" in shader
+        assert "vec3 col = mix(sharp, blurred, blurWeight);" in shader
 
 
 def test_finest_blur_keeps_its_first_kawase_pass_at_native_resolution():

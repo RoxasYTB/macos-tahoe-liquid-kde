@@ -56,6 +56,8 @@ struct BlurEffect {
     Region decorationBlurRegion(EffectWindow*) const { return {}; }
     std::optional<Region> implicitFrame(EffectWindow* w) const {
         std::optional<Region> frame;
+        const auto content = m_windows.at(w).content;
+        const bool explicitClientBlurRegion = !w->decoration() && content.has_value() && !content->isEmpty();
 ''' + frame_logic + '''
         return frame;
     }
@@ -115,6 +117,9 @@ int main() {
         assert(effect.blurRegion(&window) == capsule);
     }
     window.type = EffectWindow::Normal;
+    assert(!effect.implicitFrame(&window).has_value());
+    assert(effect.blurRegion(&window) == capsule);
+    state.content.reset();
     assert(effect.implicitFrame(&window) == Region(QRect(0, 0, 120, 120)));
 
     // Recover the client curve for both the detached capsule and popup panel.
@@ -161,6 +166,15 @@ int main() {
     }
     assert(!roundedBlurRadius(QRegion(), QRect(0, 0, 640, 72)));
     assert(!roundedBlurRadius(QRegion(QRect(0, 0, 640, 72)), QRect(0, 0, 640, 72)));
+    const QImage progressive = blurFalloffMask(QRegion(QRect(0, 0, 20, 20)));
+    int previous = 0;
+    for (int x = 0; x <= 5; ++x) {
+        const int weight = qRed(progressive.pixel(x, 10));
+        assert(weight >= previous);
+        previous = weight;
+    }
+    assert(qRed(progressive.pixel(0, 10)) < 64);
+    assert(qRed(progressive.pixel(5, 10)) == 255);
     const auto square = clientBlurShape(QRegion(QRect(8, 12, 300, 32)));
     assert(square && square->radius == 0 && square->bounds == QRect(8, 12, 300, 32));
     assert(!square->integerEllipse && square->surfaceRect() == square->bounds);

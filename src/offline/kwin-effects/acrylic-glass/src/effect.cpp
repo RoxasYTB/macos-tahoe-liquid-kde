@@ -657,12 +657,19 @@ void BlurEffect::updateBlurRegion(EffectWindow* w)
         }
     }
 
+    // An undecorated client that explicitly declares a blur region owns
+    // its own glass geometry. Do not expand that request to the full
+    // window just because X11 reports Qt.Popup as an override window.
+    const bool explicitClientBlurRegion = !w->decoration() && content.has_value() && !content->isEmpty();
+
     // Decoration-side blur: opt-in via the KDecoration3 protocol, else
-    // implicit for normal windows (skip docks / menus / popups so their
-    // own opaque chrome doesn't double-blur).
+    // implicit for normal windows (skip docks / menus / popups and clients
+    // with their own blur region so their opaque chrome doesn't double-blur).
     if (m_blurDecorations && w->decorationHasAlpha() && decorationSupportsBlurBehind(w)) {
         frame = decorationBlurRegion(w);
-    } else if (m_blurDecorations && !(w->isDock() || w->isTooltip() || w->isMenu() || w->isDropdownMenu() || w->isPopupMenu() || w->isPopupWindow() || w->isAppletPopup())) {
+    } else if (m_blurDecorations && !explicitClientBlurRegion
+               && !(w->isDock() || w->isTooltip() || w->isMenu() || w->isDropdownMenu()
+                    || w->isPopupMenu() || w->isPopupWindow() || w->isAppletPopup())) {
         frame = Rect(w->frameGeometry().translated(-w->x(), -w->y()).toRect());
     }
 
@@ -673,8 +680,8 @@ void BlurEffect::updateBlurRegion(EffectWindow* w)
         data.frame = frame;
         data.clientShape.reset();
         if (!w->decoration() && content.has_value() && !frame.has_value()
-            && (w->isDock() || w->isTooltip() || w->isMenu() || w->isDropdownMenu()
-                || w->isPopupMenu() || w->isAppletPopup() || w->isPopupWindow())) {
+            && (explicitClientBlurRegion || w->isDock() || w->isTooltip() || w->isMenu()
+                || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup() || w->isPopupWindow())) {
             QRegion clientRegion;
             for (const Rect &rect : content->rects()) {
                 clientRegion += QRect(rect);
@@ -871,9 +878,10 @@ Region BlurEffect::blurRegion(EffectWindow* w) const
     if (auto it = m_windows.find(w); it != m_windows.end()) {
         const std::optional<Region>& content = it->second.content;
         const std::optional<Region>& frame = it->second.frame;
-        const bool clientPopup = !w->decoration() && (w->isDock() || w->isTooltip()
+        const bool explicitClientBlurRegion = !w->decoration() && content.has_value() && !content->isEmpty();
+        const bool clientPopup = explicitClientBlurRegion || (!w->decoration() && (w->isDock() || w->isTooltip()
             || w->isMenu() || w->isDropdownMenu() || w->isPopupMenu()
-            || w->isAppletPopup() || w->isPopupWindow());
+            || w->isAppletPopup() || w->isPopupWindow()));
 
         if (content.has_value()) {
             if (content->isEmpty()) {
@@ -1205,12 +1213,18 @@ void BlurEffect::blur(
     }
 
     const QRect backgroundRect = blurShape.boundingRect();
-    const bool progressivePopupBlur = w->isPopupWindow() || w->isTooltip() || w->isMenu()
-        || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
+    const bool explicitClientBlurRegion = !w->decoration() && blurInfo.content.has_value()
+        && !blurInfo.content->isEmpty();
+    const bool progressivePopupBlur = explicitClientBlurRegion || w->isPopupWindow() || w->isTooltip()
+        || w->isMenu() || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
     GLTexture *falloffTexture = m_fullBlurFalloffTexture.get();
     if (progressivePopupBlur) {
         const QRegion localBlurRegionQt = static_cast<QRegion>(localBlurRegion);
-        const QSize maskSize = backgroundRect.size();
+#if defined(GLASS_X11)
+        const QSize maskSize = agSnapToPixelGrid(viewport.mapToRenderTarget(backgroundRect)).size();
+#else
+        const QSize maskSize = agSnapToPixelGrid(scaledRect(backgroundRect, viewport.scale())).size();
+#endif
         if (renderInfo.falloffRegion != localBlurRegionQt || renderInfo.falloffSize != maskSize
             || !renderInfo.falloffTexture) {
             QImage falloff = blurFalloffMask(localBlurRegionQt);
@@ -1538,8 +1552,8 @@ void BlurEffect::blur(
     // it with kcfg values keyed by window type (dock / popup / normal).
     // Maximized full-screen apps keep sharp corners unless the user
     // opts in via RoundCornersOfMaximizedWindows.
-    const bool popupSurface = w->isTooltip() || w->isPopupWindow() || w->isMenu()
-        || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
+    const bool popupSurface = explicitClientBlurRegion || w->isTooltip() || w->isPopupWindow()
+        || w->isMenu() || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
     const QMatrix4x4& colorMatrix = popupSurface ? m_popupColorMatrix : m_colorMatrix;
     const float modulation = opacity * opacity;
 
@@ -1551,7 +1565,8 @@ void BlurEffect::blur(
         topCornerRadius = BlurConfig::dockCornerRadius();
         bottomCornerRadius = BlurConfig::dockCornerRadius();
 
-    } else if (w->isTooltip() || w->isPopupWindow() || w->isMenu() || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup()) {
+    } else if (explicitClientBlurRegion || w->isTooltip() || w->isPopupWindow() || w->isMenu()
+               || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup()) {
         topCornerRadius = BlurConfig::popupCornerRadius();
         bottomCornerRadius = BlurConfig::popupCornerRadius();
 

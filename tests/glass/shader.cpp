@@ -61,6 +61,11 @@ int main(int argc, char **argv)
     QOpenGLTexture texture(backdrop);
     texture.setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
     texture.setWrapMode(QOpenGLTexture::ClampToEdge);
+    QImage blurMask(1, 1, QImage::Format_RGBA8888);
+    blurMask.fill(Qt::white);
+    QOpenGLTexture blurFalloffTexture(blurMask);
+    blurFalloffTexture.setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
+    blurFalloffTexture.setWrapMode(QOpenGLTexture::ClampToEdge);
     QOpenGLFramebufferObject target(width, height);
     const QString root = QString::fromLocal8Bit(argv[1]);
     QImage reference;
@@ -91,6 +96,8 @@ int main(int argc, char **argv)
         shader.setUniformValue("modelViewProjectionMatrix", projection);
         shader.setUniformValue("colorMatrix", QMatrix4x4());
         shader.setUniformValue("texUnit", 0);
+        shader.setUniformValue("sharpTex", 0);
+        shader.setUniformValue("blurFalloffTex", 1);
         shader.setUniformValue("halfpixel", QVector2D(0.5 / width, 0.5 / height));
         shader.setUniformValue("blurSize", QVector2D(width, height));
         shader.setUniformValue("box", QVector4D(width / 2, height / 2, width / 2, height / 2));
@@ -114,7 +121,8 @@ int main(int argc, char **argv)
             gl->glDisable(GL_BLEND);
             gl->glClearColor(0,0,0,0);
             gl->glClear(GL_COLOR_BUFFER_BIT);
-            texture.bind();
+            texture.bind(0);
+            blurFalloffTexture.bind(1);
             gl->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             gl->glFinish();
             const auto error = gl->glGetError();
