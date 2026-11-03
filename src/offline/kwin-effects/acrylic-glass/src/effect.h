@@ -387,6 +387,7 @@ private:
     QStringList m_windowBorderClasses; ///< Window-class list for the glass-border filter.
     bool m_windowBorderWhitelist; ///< True: border listed classes only; false: all except listed.
     bool m_blurDecorations; ///< Apply blur under the server-side decoration too.
+    bool m_blurDuringMoveResize = false;
 
     // Per-strength lookup tables (populated by initBlurStrengthValues)
 

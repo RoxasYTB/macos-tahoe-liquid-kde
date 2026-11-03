@@ -17,6 +17,9 @@
         <entry name="BlurDecorations" type="Bool">
             <default>true</default>
         </entry>
+        <entry name="BlurDuringMoveResize" type="Bool">
+            <default>false</default>
+        </entry>
         <!-- cairo-dock renders its own dock surface; glassing it draws a
              phantom glass panel behind the dock. kwin_wayland is the
              resource class of KWin's own input-method candidate popups;

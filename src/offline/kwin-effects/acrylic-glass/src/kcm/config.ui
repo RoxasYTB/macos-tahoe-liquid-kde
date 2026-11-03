@@ -500,6 +500,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="kcfg_BlurDuringMoveResize">
+         <property name="text">
+          <string>Keep Liquid Glass while moving or resizing windows</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="opticsSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

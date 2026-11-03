@@ -508,6 +508,7 @@ void BlurEffect::reconfigure(ReconfigureFlags flags)
     m_gradientTop = gradientColor(BlurConfig::gradientTopColor(), BlurConfig::gradientTopOpacity());
     m_gradientBottom = gradientColor(BlurConfig::gradientBottomColor(), BlurConfig::gradientBottomOpacity());
     m_blurDecorations = BlurConfig::blurDecorations();
+    m_blurDuringMoveResize = BlurConfig::blurDuringMoveResize();
 
     // Window-class filters (whitelist vs blacklist) — the parser handles the
     // ``$blank`` escape used by the KCM to represent empty entries.
@@ -952,6 +953,14 @@ void BlurEffect::prePaintWindow(RenderView* view, EffectWindow* w, WindowPrePain
     effects->prePaintWindow(view, w, data ACRYLIC_GLASS_PRESENT_TIME_ARG);
 #endif
 
+    // Keep a dragged or resized application window fully opaque and avoid
+    // scheduling backdrop work for every geometry update. The glass resumes
+    // on the next frame after KWin ends the interactive operation.
+    if (!m_blurDuringMoveResize && (w->isUserMove() || w->isUserResize())
+        && !w->data(WindowForceBlurRole).toBool()) {
+        return;
+    }
+
 #if ACRYLIC_GLASS_WAYLAND_BACKGROUND_EFFECT_V1
     // On KWin 6.7+ the ext_background_effect_v1 machinery owns the
     // dirty/opaque bookkeeping, so no manual pass is needed. The
@@ -1027,6 +1036,11 @@ void BlurEffect::prePaintWindow(RenderView* view, EffectWindow* w, WindowPrePain
 /// override Plasma uses to opt specific windows in regardless.
 bool BlurEffect::shouldBlur(const EffectWindow* w, int mask, const WindowPaintData& data) const
 {
+    if (!m_blurDuringMoveResize && (w->isUserMove() || w->isUserResize())
+        && !w->data(WindowForceBlurRole).toBool()) {
+        return false;
+    }
+
     if (effects->activeFullScreenEffect() && !w->data(WindowForceBlurRole).toBool()) {
         return false;
     }

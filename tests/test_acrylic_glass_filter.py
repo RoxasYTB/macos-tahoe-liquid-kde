@@ -38,8 +38,13 @@ struct Window {
 };
 struct EffectWindow {
     Window meta;
+    bool moving = false;
+    bool resizing = false;
+    bool forced = true;
     bool isDesktop() const { return false; }
-    QVariant data(int) const { return true; }
+    bool isUserMove() const { return moving; }
+    bool isUserResize() const { return resizing; }
+    QVariant data(int) const { return forced; }
     const Window *window() const { return &meta; }
 };
 struct WindowPaintData {
@@ -55,14 +60,19 @@ auto effects = &handler;
 struct BlurEffect {
     bool m_whitelist;
     QStringList m_windowClasses;
+    bool m_blurDuringMoveResize;
     bool shouldBlur(const EffectWindow *, int, const WindowPaintData &) const;
 };
 ''' + "bool BlurEffect::shouldBlur(" + method + "\n}\n" + r'''
 int main(int argc, char **argv) {
-    if (argc != 5) return 2;
+    if (argc != 9) return 2;
     EffectWindow window{{QString::fromUtf8(argv[1]), QString::fromUtf8(argv[2])}};
+    window.moving = QString::fromUtf8(argv[5]) == "1";
+    window.resizing = QString::fromUtf8(argv[6]) == "1";
+    window.forced = QString::fromUtf8(argv[8]) == "1";
     BlurEffect effect{QString::fromUtf8(argv[3]) == "whitelist",
-                      QString::fromUtf8(argv[4]).split(',')};
+                      QString::fromUtf8(argv[4]).split(','),
+                      QString::fromUtf8(argv[7]) == "1"};
     std::cout << effect.shouldBlur(&window, 0, WindowPaintData{});
 }
 ''')
@@ -72,23 +82,43 @@ int main(int argc, char **argv) {
     return binary
 
 
-@pytest.mark.parametrize("cls,name,mode,entries,expected", [
-    ("VirtualBoxVM", "VirtualBoxVM", "blacklist", "", "0"),
-    ("VirtualBoxVM", "guest", "blacklist", "custom-app", "0"),
-    ("guest", "VirtualBoxVM", "blacklist", "custom-app", "0"),
-    ("virtualboxvm", "guest", "blacklist", "", "0"),
-    ("guest", "VIRTUALBOXVM", "blacklist", "", "0"),
-    ("VirtualBoxVM", "guest", "whitelist", "VirtualBoxVM", "0"),
-    ("guest", "VirtualBoxVM", "whitelist", "guest", "0"),
-    ("VirtualBox", "VirtualBox", "blacklist", "", "1"),
-    ("VirtualBox Manager", "VirtualBox", "blacklist", "", "1"),
-    ("org.kde.dolphin", "dolphin", "blacklist", "custom-app", "1"),
-    ("custom-app", "custom-app", "blacklist", "custom-app", "0"),
-    ("custom-app", "custom-app", "whitelist", "custom-app", "1"),
-    ("org.kde.dolphin", "dolphin", "whitelist", "custom-app", "0"),
+@pytest.mark.parametrize("cls,name,mode,entries,moving,resizing,allow_motion,forced,expected", [
+    ("VirtualBoxVM", "VirtualBoxVM", "blacklist", "", "0", "0", "0", "1", "0"),
+    ("VirtualBoxVM", "guest", "blacklist", "custom-app", "0", "0", "0", "1", "0"),
+    ("guest", "VirtualBoxVM", "blacklist", "custom-app", "0", "0", "0", "1", "0"),
+    ("virtualboxvm", "guest", "blacklist", "", "0", "0", "0", "1", "0"),
+    ("guest", "VIRTUALBOXVM", "blacklist", "", "0", "0", "0", "1", "0"),
+    ("VirtualBoxVM", "guest", "whitelist", "VirtualBoxVM", "0", "0", "0", "1", "0"),
+    ("guest", "VirtualBoxVM", "whitelist", "guest", "0", "0", "0", "1", "0"),
+    ("VirtualBox", "VirtualBox", "blacklist", "", "0", "0", "0", "1", "1"),
+    ("VirtualBox Manager", "VirtualBox", "blacklist", "", "0", "0", "0", "1", "1"),
+    ("org.kde.dolphin", "dolphin", "blacklist", "custom-app", "0", "0", "0", "1", "1"),
+    ("custom-app", "custom-app", "blacklist", "custom-app", "0", "0", "0", "1", "0"),
+    ("custom-app", "custom-app", "whitelist", "custom-app", "0", "0", "0", "1", "1"),
+    ("org.kde.dolphin", "dolphin", "whitelist", "custom-app", "0", "0", "0", "1", "0"),
+    ("org.kde.dolphin", "dolphin", "blacklist", "custom-app", "1", "0", "0", "0", "0"),
+    ("org.kde.dolphin", "dolphin", "blacklist", "custom-app", "0", "1", "0", "0", "0"),
+    ("org.kde.dolphin", "dolphin", "blacklist", "custom-app", "1", "0", "1", "0", "1"),
+    ("org.kde.dolphin", "dolphin", "blacklist", "custom-app", "1", "0", "0", "1", "1"),
 ])
 def test_vm_surfaces_skip_glass_without_changing_other_filters(
-        blur_gate, cls, name, mode, entries, expected):
-    result = subprocess.run([str(blur_gate), cls, name, mode, entries],
+        blur_gate, cls, name, mode, entries, moving, resizing, allow_motion, forced, expected):
+    result = subprocess.run([str(blur_gate), cls, name, mode, entries,
+                             moving, resizing, allow_motion, forced],
                             capture_output=True, text=True, check=True, timeout=5)
     assert result.stdout == expected
+
+
+def test_interactive_move_skips_translucent_prepaint_work():
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[1] /
+              "src/offline/kwin-effects/acrylic-glass/src/effect.cpp").read_text()
+    start = source.index("void BlurEffect::prePaintWindow(")
+    end = source.index("bool BlurEffect::shouldBlur(", start)
+    prepaint = source[start:end]
+    motion_guard = (
+        "if (!m_blurDuringMoveResize && (w->isUserMove() || w->isUserResize())"
+    )
+    assert motion_guard in prepaint
+    assert prepaint.index(motion_guard) < prepaint.index("const Region blurArea")
