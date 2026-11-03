@@ -38,6 +38,11 @@ their own opacity. Gradient
 colors and strengths are independent of this coverage, so a lighter bottom
 does not lose its blur. Disable **Enable gradient** for an untinted material.
 
+Popup blur fades from the sharp scene to full blur over the first 6 logical
+pixels inside each declared blur-region edge. The falloff mask is cached per
+view and region; the sharp and blurred samples both come from KWin's current
+scene, so foreground windows remain the refraction source.
+
 Selecting another preset replaces your material adjustments. **Restore this
 preset** reapplies the selected preset, including its gradient colors.
 **Cancel** discards pending changes. Saved adjustments survive reopening the

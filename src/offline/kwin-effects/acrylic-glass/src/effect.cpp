@@ -210,6 +210,16 @@ BlurEffect::BlurEffect()
     BlurConfig::instance(effects->config());
     ensureResources();
 
+    QImage opaqueBlurMask(1, 1, QImage::Format_RGBA8888);
+    opaqueBlurMask.fill(Qt::white);
+    m_fullBlurFalloffTexture = GLTexture::upload(opaqueBlurMask);
+    if (!m_fullBlurFalloffTexture) {
+        qCWarning(KWIN_BLUR) << "Failed to create default blur mask";
+        return;
+    }
+    m_fullBlurFalloffTexture->setFilter(GL_NEAREST);
+    m_fullBlurFalloffTexture->setWrapMode(GL_CLAMP_TO_EDGE);
+
     // Onscreen pass: SDF + drift + lens + rim, the user-facing surface
     m_roundedOnscreenPass.shader = ShaderManager::instance()->generateShaderFromFile(
         ShaderTrait::MapTexture, shaderPath(QStringLiteral("glass"), QStringLiteral("vert")), shaderPath(QStringLiteral("glass"), QStringLiteral("frag")));
@@ -245,6 +255,8 @@ BlurEffect::BlurEffect()
         m_roundedOnscreenPass.backgroundSizeLocation = m_roundedOnscreenPass.shader->uniformLocation("backgroundSize");
         m_roundedOnscreenPass.gradientTopLocation = m_roundedOnscreenPass.shader->uniformLocation("gradientTop");
         m_roundedOnscreenPass.gradientBottomLocation = m_roundedOnscreenPass.shader->uniformLocation("gradientBottom");
+        m_roundedOnscreenPass.sharpTextureLocation = m_roundedOnscreenPass.shader->uniformLocation("sharpTex");
+        m_roundedOnscreenPass.falloffTextureLocation = m_roundedOnscreenPass.shader->uniformLocation("blurFalloffTex");
 
         qCDebug(KWIN_BLUR) << "Onscreen shader uniforms:"
                            << "mvp=" << m_roundedOnscreenPass.mvpMatrixLocation << "color=" << m_roundedOnscreenPass.colorMatrixLocation
@@ -1173,7 +1185,8 @@ void BlurEffect::blur(
     // 2. Effective blur shape
     // If the window is transformed (scaled / translated by an effect such
     // as overview), the shape has to follow.
-    Region blurShape = blurRegion(w).translated(w->pos().toPoint());
+    const Region localBlurRegion = blurRegion(w);
+    Region blurShape = localBlurRegion.translated(w->pos().toPoint());
 
     if (data.xScale() != 1 || data.yScale() != 1) {
         QPoint pt = blurShape.boundingRect().topLeft();
@@ -1192,6 +1205,30 @@ void BlurEffect::blur(
     }
 
     const QRect backgroundRect = blurShape.boundingRect();
+    const bool progressivePopupBlur = w->isPopupWindow() || w->isTooltip() || w->isMenu()
+        || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
+    GLTexture *falloffTexture = m_fullBlurFalloffTexture.get();
+    if (progressivePopupBlur) {
+        const QRegion localBlurRegionQt = static_cast<QRegion>(localBlurRegion);
+        const QSize maskSize = backgroundRect.size();
+        if (renderInfo.falloffRegion != localBlurRegionQt || renderInfo.falloffSize != maskSize
+            || !renderInfo.falloffTexture) {
+            QImage falloff = blurFalloffMask(localBlurRegionQt);
+            if (falloff.size() != maskSize) {
+                falloff = falloff.scaled(maskSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+            }
+            renderInfo.falloffTexture = GLTexture::upload(falloff);
+            if (!renderInfo.falloffTexture) {
+                qCWarning(KWIN_BLUR) << "Failed to upload blur falloff mask";
+                return;
+            }
+            renderInfo.falloffTexture->setFilter(GL_LINEAR);
+            renderInfo.falloffTexture->setWrapMode(GL_CLAMP_TO_EDGE);
+            renderInfo.falloffRegion = localBlurRegionQt;
+            renderInfo.falloffSize = maskSize;
+        }
+        falloffTexture = renderInfo.falloffTexture.get();
+    }
 #if defined(GLASS_X11)
     const QRect deviceBackgroundRect = agSnapToPixelGrid(viewport.mapToRenderTarget(backgroundRect));
     const QRect scaledBackgroundRect(QPoint(0, 0), deviceBackgroundRect.size());
@@ -1652,7 +1689,14 @@ void BlurEffect::blur(
         QVector2D(scaledBackgroundRect.width(), scaledBackgroundRect.height()));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.gradientTopLocation, m_gradientTop);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.gradientBottomLocation, m_gradientBottom);
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.sharpTextureLocation, 1);
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.falloffTextureLocation, 2);
 
+    glActiveTexture(GL_TEXTURE1);
+    renderInfo.framebuffers[0]->colorAttachment()->bind();
+    glActiveTexture(GL_TEXTURE2);
+    falloffTexture->bind();
+    glActiveTexture(GL_TEXTURE0);
     read->colorAttachment()->bind();
 
     glEnable(GL_BLEND);
@@ -1661,6 +1705,7 @@ void BlurEffect::blur(
     vbo->draw(GL_TRIANGLES, 6, vertexCount);
 
     glDisable(GL_BLEND);
+    glActiveTexture(GL_TEXTURE0);
 
     ShaderManager::instance()->popShader();
 

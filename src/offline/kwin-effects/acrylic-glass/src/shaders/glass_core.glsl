@@ -9,6 +9,8 @@
 #include "highlight.glsl"
 
 uniform sampler2D texUnit;
+uniform sampler2D sharpTex;
+uniform sampler2D blurFalloffTex;
 uniform mat4 colorMatrix;
 uniform float offset;
 uniform vec2 halfpixel;
@@ -73,17 +75,21 @@ void main()
         }
     }
     vec2 texel = halfpixel * 2.0;
-    vec3 col;
+    vec2 falloffUV = vec2(uv.x, 1.0 - uv.y);
+    float blurWeight = texture(blurFalloffTex, falloffUV).r;
+    vec3 sharp = LG_SAMPLE(sharpTex, clamp(lensUV, 0.0, 1.0)).rgb;
+    vec3 blurred;
     if (offset > 0.0) {
-        col = lgGaussianBlur(texUnit, texel, lensUV, offset);
+        blurred = lgGaussianBlur(texUnit, texel, lensUV, offset);
     } else if (lensStrength > 0.0) {
-        col = LG_SAMPLE(texUnit, clamp(lensUV, 0.0, 1.0)).rgb;
+        blurred = LG_SAMPLE(texUnit, clamp(lensUV, 0.0, 1.0)).rgb;
     } else {
         // Pixel-exact passthrough: snap to texel center so GL_LINEAR returns
         // the underlying texel exactly instead of a sub-pixel bilinear blend.
         vec2 snapped = (floor(lensUV / texel) + 0.5) * texel;
-        col = LG_SAMPLE(texUnit, clamp(snapped, 0.0, 1.0)).rgb;
+        blurred = LG_SAMPLE(texUnit, clamp(snapped, 0.0, 1.0)).rgb;
     }
+    vec3 col = mix(sharp, blurred, blurWeight);
     if (driftStrength > 0.0) {
         col = lgApplyRgbDrift(texUnit, col, lensUV, outNorm, blurSize, driftStrength, edgeQ);
     }

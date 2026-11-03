@@ -9,6 +9,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <vector>
 
 inline QRegion integerRoundedRegion(const QRect &bounds, int radius)
 {
@@ -138,4 +139,86 @@ inline std::optional<ClientBlurShape> clientBlurShape(const QRegion &region)
         return ClientBlurShape{bounds, *radius, integerRoundedRegion(bounds, qRound(*radius)) == region};
     }
     return std::nullopt;
+}
+
+// Build a per-pixel blur weight for the window's blur region. The blur stays
+// sharp at the glass edge and reaches full strength over a short inward
+// distance, avoiding a hard transition between blurred and crisp backdrop.
+inline QImage blurFalloffMask(const QRegion &region, int fadePixels = 6)
+{
+    const QRect bounds = region.boundingRect();
+    if (bounds.isEmpty()) {
+        return {};
+    }
+
+    QImage mask(bounds.size(), QImage::Format_RGBA8888);
+    if (mask.isNull()) {
+        return {};
+    }
+    mask.fill(0);
+
+    QPainter painter(&mask);
+    painter.setPen(Qt::white);
+    painter.setBrush(Qt::white);
+    for (const QRect &rect : region) {
+        painter.drawRect(rect.translated(-bounds.topLeft()));
+    }
+    painter.end();
+
+    const int width = mask.width();
+    const int height = mask.height();
+    const int unreachable = std::max(1, fadePixels + 1);
+    std::vector<int> distance(size_t(width) * size_t(height), unreachable);
+    auto inside = [&mask](int x, int y) {
+        return mask.constScanLine(y)[x * 4 + 3] != 0;
+    };
+    auto index = [width](int x, int y) {
+        return size_t(y) * size_t(width) + size_t(x);
+    };
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (inside(x, y)) {
+                if (x == 0 || y == 0 || x == width - 1 || y == height - 1) {
+                    distance[index(x, y)] = 1;
+                }
+                continue;
+            }
+            const size_t i = index(x, y);
+            distance[i] = 0;
+            if (x > 0 && inside(x - 1, y)) distance[index(x - 1, y)] = 1;
+            if (y > 0 && inside(x, y - 1)) distance[index(x, y - 1)] = 1;
+        }
+    }
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (!inside(x, y)) continue;
+            int &d = distance[index(x, y)];
+            if (x > 0) d = std::min(d, distance[index(x - 1, y)] + 1);
+            if (y > 0) d = std::min(d, distance[index(x, y - 1)] + 1);
+        }
+    }
+    for (int y = height - 1; y >= 0; --y) {
+        for (int x = width - 1; x >= 0; --x) {
+            if (!inside(x, y)) continue;
+            int &d = distance[index(x, y)];
+            if (x + 1 < width) d = std::min(d, distance[index(x + 1, y)] + 1);
+            if (y + 1 < height) d = std::min(d, distance[index(x, y + 1)] + 1);
+        }
+    }
+
+    for (int y = 0; y < height; ++y) {
+        auto *row = mask.scanLine(y);
+        for (int x = 0; x < width; ++x) {
+            const float t = std::clamp(float(distance[index(x, y)]) / float(std::max(1, fadePixels)), 0.0f, 1.0f);
+            const float smooth = t * t * (3.0f - 2.0f * t);
+            const uchar value = inside(x, y) ? uchar(std::lround(smooth * 255.0f)) : 0;
+            row[x * 4 + 0] = value;
+            row[x * 4 + 1] = value;
+            row[x * 4 + 2] = value;
+            row[x * 4 + 3] = value;
+        }
+    }
+    return mask;
 }

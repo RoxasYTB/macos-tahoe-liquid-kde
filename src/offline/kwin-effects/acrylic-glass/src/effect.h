@@ -53,6 +53,9 @@ struct BlurRenderData
 {
     std::vector<std::unique_ptr<GLTexture>> textures;
     std::vector<std::unique_ptr<GLFramebuffer>> framebuffers;
+    QRegion falloffRegion;
+    QSize falloffSize;
+    std::unique_ptr<GLTexture> falloffTexture;
 };
 
 /**
@@ -293,6 +296,8 @@ private:
         int backgroundSizeLocation;
         int gradientTopLocation;
         int gradientBottomLocation;
+        int sharpTextureLocation;
+        int falloffTextureLocation;
     } m_roundedOnscreenPass;
 
     /// Dual Kawase downsample (halves resolution per iteration).
@@ -330,6 +335,8 @@ private:
         qreal noiseTextureScale = 1.0;
         int noiseTextureStength = 0;
     } m_noisePass;
+
+    std::unique_ptr<GLTexture> m_fullBlurFalloffTexture;
 
     // Mutable state
 
