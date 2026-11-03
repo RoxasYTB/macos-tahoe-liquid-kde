@@ -371,6 +371,8 @@ private:
 
     QStringList m_windowClasses; ///< Window-class list for the blur-match filter.
     bool m_whitelist; ///< True: only blur listed classes. False: blur everything except listed.
+    QStringList m_windowBorderClasses; ///< Window-class list for the glass-border filter.
+    bool m_windowBorderWhitelist; ///< True: border listed classes only; false: all except listed.
     bool m_blurDecorations; ///< Apply blur under the server-side decoration too.
 
     // Per-strength lookup tables (populated by initBlurStrengthValues)

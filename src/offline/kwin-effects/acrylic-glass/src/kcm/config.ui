@@ -655,6 +655,63 @@ firefox</string>
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupWindowBorderList">
+         <property name="title">
+          <string>Glass Border List</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayoutBorderList">
+          <item>
+           <widget class="QLabel" name="labelWindowBorderClassesHelp">
+            <property name="text">
+             <string>One window class or resource name per line. For windows using Acrylic Glass, this controls the glass rim independently of the blur filter.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPlainTextEdit" name="kcfg_WindowBorderClasses">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>120</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>examples:
+org.kde.dolphin
+firefox</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBorderMatchMode">
+         <property name="title">
+          <string>Border Match Mode</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayoutBorderMatchMode">
+          <item>
+           <widget class="QRadioButton" name="kcfg_WindowBorderMatching">
+            <property name="text">
+             <string>Only matching windows</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="kcfg_WindowBorderNonMatching">
+            <property name="text">
+             <string>All except matching windows</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacerRules">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

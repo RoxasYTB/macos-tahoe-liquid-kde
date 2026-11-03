@@ -36,6 +36,15 @@ xembedsniproxy</default>
         <entry name="BlurNonMatching" type="Bool">
             <default>true</default>
         </entry>
+        <entry name="WindowBorderClasses" type="String">
+            <default></default>
+        </entry>
+        <entry name="WindowBorderMatching" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="WindowBorderNonMatching" type="Bool">
+            <default>true</default>
+        </entry>
         <entry name="WindowCornerRadius" type="Double">
             <default>22.0</default>
         </entry>

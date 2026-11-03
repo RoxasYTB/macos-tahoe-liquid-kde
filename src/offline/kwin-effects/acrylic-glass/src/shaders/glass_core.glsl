@@ -91,7 +91,7 @@ void main()
         col = lgApplyHighlight(col, inside, outNorm, pos, blurSize,
                                highlightWidth, reflectionStrength, dockSurface);
         if (!dockSurface && lensStrength > 0.0) {
-            col = lgApplyLensReflection(col, lensNormal, reflectionStrength);
+            col = lgApplyLensReflection(col, lensNormal, reflectionStrength, pos, blurSize);
         }
     }
 

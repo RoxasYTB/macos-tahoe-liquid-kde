@@ -47,6 +47,10 @@ LiquidGlassEffectConfig::LiquidGlassEffectConfig(QObject* parent, const KPluginM
     if (!ui.kcfg_BlurMatching->isChecked() && !ui.kcfg_BlurNonMatching->isChecked()) {
         ui.kcfg_BlurNonMatching->setChecked(true);
     }
+    if (!ui.kcfg_WindowBorderMatching->isChecked()
+        && !ui.kcfg_WindowBorderNonMatching->isChecked()) {
+        ui.kcfg_WindowBorderNonMatching->setChecked(true);
+    }
 }
 
 LiquidGlassEffectConfig::~LiquidGlassEffectConfig() { }

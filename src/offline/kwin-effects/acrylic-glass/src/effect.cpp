@@ -494,36 +494,42 @@ void BlurEffect::reconfigure(ReconfigureFlags flags)
     m_gradientBottom = gradientColor(BlurConfig::gradientBottomColor(), BlurConfig::gradientBottomOpacity());
     m_blurDecorations = BlurConfig::blurDecorations();
 
-    // Window-class filter (whitelist vs blacklist) — the parser below handles
-    // the ``$blank`` escape used by the KCM to represent empty entries.
+    // Window-class filters (whitelist vs blacklist) — the parser handles the
+    // ``$blank`` escape used by the KCM to represent empty entries.
     m_whitelist = BlurConfig::blurMatching();
-    m_windowClasses.clear();
-    const auto blank = QStringLiteral("blank");
-    for (const auto& line : BlurConfig::windowClasses().split("\n", Qt::SkipEmptyParts)) {
-        QString unescaped = "";
-        bool consumed = false;
-        for (qsizetype i = 0; i < line.size(); i++) {
-            const auto character = line[i];
-            if (character == QChar('$') && !consumed) {
-                consumed = true;
-                continue;
-            }
-            if (consumed) {
-                const qsizetype skips = blank.size();
-                if (line.mid(i, skips) == blank) {
-                    consumed = false;
-                    i += skips - 1;
+    const auto parseWindowClasses = [](const QString &serialized) {
+        QStringList classes;
+        const auto blank = QStringLiteral("blank");
+        for (const auto &line : serialized.split("\n", Qt::SkipEmptyParts)) {
+            QString unescaped;
+            bool consumed = false;
+            for (qsizetype i = 0; i < line.size(); i++) {
+                const auto character = line[i];
+                if (character == QChar('$') && !consumed) {
+                    consumed = true;
                     continue;
                 }
+                if (consumed) {
+                    const qsizetype skips = blank.size();
+                    if (line.mid(i, skips) == blank) {
+                        consumed = false;
+                        i += skips - 1;
+                        continue;
+                    }
+                }
+                consumed = false;
+                unescaped += character;
             }
-            consumed = false;
-            unescaped += character;
+            if (consumed) {
+                unescaped += QChar('$');
+            }
+            classes << unescaped;
         }
-        if (consumed) {
-            unescaped += QChar('$');
-        }
-        m_windowClasses << unescaped;
-    }
+        return classes;
+    };
+    m_windowClasses = parseWindowClasses(BlurConfig::windowClasses());
+    m_windowBorderClasses = parseWindowClasses(BlurConfig::windowBorderClasses());
+    m_windowBorderWhitelist = BlurConfig::windowBorderMatching();
 
     // Re-evaluate the cached blur region of every open window. Without this,
     // a settings change that affects which region is blurred (e.g. toggling
@@ -1629,7 +1635,13 @@ void BlurEffect::blur(
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.magnifyGlassStrengthLocation, m_magnifyGlassStrength);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.refractionWidthLocation, float(m_refractionWidth * viewport.scale()));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.highlightWidthLocation, float(m_highlightWidth * viewport.scale()));
-    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.highlightStrengthLocation, m_highlightStrength);
+    const QString windowClass = w->window()->resourceClass();
+    const QString resourceName = w->window()->resourceName();
+    const bool borderMatches = m_windowBorderClasses.contains(windowClass)
+        || m_windowBorderClasses.contains(resourceName);
+    const bool drawGlassBorder = m_windowBorderWhitelist ? borderMatches : !borderMatches;
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.highlightStrengthLocation,
+                                              drawGlassBorder ? m_highlightStrength : 0.0f);
     // Panels and the Dock retain untinted glass under every material.
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.darkGradientOverlayLocation,
         int(m_darkGradientOverlay && !w->isDock()));

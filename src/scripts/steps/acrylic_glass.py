@@ -1,6 +1,7 @@
 from localization import tr
 import hashlib
 import json
+import os
 import re
 import subprocess
 import time
@@ -21,6 +22,9 @@ SRC = offline("kwin-effects/acrylic-glass")
 BUILD = build_dir("kwin-effects/acrylic-glass")
 HOME = Path.home()
 LEGACY_USER_PLUGIN_DIR = HOME / ".local/lib/qt6/plugins"
+STATE_DIR = HOME / ".local/state/mac-tahoe-liquid-kde"
+PREV_MOVE_RESIZE_FILE = STATE_DIR / "translucency-move-resize-previous.json"
+_MOVE_RESIZE_DEFAULT = "100"
 
 
 def _translation_files():
@@ -151,6 +155,79 @@ def _install_corner_defaults() -> None:
     write. KConfig's cascade handles both user and system configuration.
     """
     _install_missing_defaults(_CORNER_DEFAULTS)
+
+
+def _snapshot_move_resize_opacity() -> bool:
+    """Record the exact KWin move/resize opacity once before disabling it."""
+    if PREV_MOVE_RESIZE_FILE.exists():
+        try:
+            payload = json.loads(PREV_MOVE_RESIZE_FILE.read_text(encoding="utf-8"))
+            return (payload.get("version") == 1
+                    and isinstance(payload.get("present"), bool)
+                    and isinstance(payload.get("value"), str))
+        except (OSError, json.JSONDecodeError):
+            return False
+
+    sentinel = f"__mttkde_absent_{uuid.uuid4().hex}__"
+    try:
+        result = run_user(
+            ["kreadconfig6", "--file", "kwinrc", "--group", "Effect-translucency",
+             "--key", "MoveResize", "--default", sentinel],
+            check=False, capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if result.returncode != 0:
+        return False
+    value = (result.stdout or "").removesuffix("\n").removesuffix("\r")
+    payload = {"version": 1, "present": value != sentinel,
+               "value": "" if value == sentinel else value}
+    temporary = PREV_MOVE_RESIZE_FILE.with_name(
+        f".{PREV_MOVE_RESIZE_FILE.name}.{os.getpid()}.tmp"
+    )
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        temporary.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+        os.replace(temporary, PREV_MOVE_RESIZE_FILE)
+        return True
+    except OSError:
+        temporary.unlink(missing_ok=True)
+        return False
+
+
+def _install_opaque_move_resize() -> bool:
+    # KWin's Translucency effect reads the case-sensitive key MoveResize.
+    # An older lowercase `moveresize` entry is ignored and leaves its 80%
+    # default active while dragging windows.
+    if not _snapshot_move_resize_opacity():
+        warn(tr('Window move opacity was not changed — previous KWin setting could not be saved'))
+        return False
+    if not kw_write("--file", "kwinrc", "--group", "Effect-translucency",
+                    "--key", "MoveResize", _MOVE_RESIZE_DEFAULT):
+        warn(tr('Window move opacity was not changed — kwriteconfig6 failed'))
+        return False
+    return True
+
+
+def _restore_move_resize_opacity() -> bool:
+    if not PREV_MOVE_RESIZE_FILE.exists():
+        return True
+    try:
+        payload = json.loads(PREV_MOVE_RESIZE_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if (payload.get("version") != 1 or not isinstance(payload.get("present"), bool)
+            or not isinstance(payload.get("value"), str)):
+        return False
+    args = ["--file", "kwinrc", "--group", "Effect-translucency", "--key", "MoveResize"]
+    if payload["present"]:
+        args.extend(("--", payload["value"]))
+    else:
+        args.append("--delete")
+    if not kw_write(*args):
+        return False
+    PREV_MOVE_RESIZE_FILE.unlink(missing_ok=True)
+    return True
 
 
 def _install_missing_defaults(defaults) -> None:
@@ -313,6 +390,8 @@ def install() -> None:
     _install_corner_defaults()
     _install_missing_defaults((("BlurDecorations", "true"),
                                ("BlurMatching", "false"), ("BlurNonMatching", "true")))
+    if _install_opaque_move_resize():
+        ok(tr('Window move opacity disabled for smoother dragging'))
     if material_applied:
         ok(tr('Acrylic Glass material settings ready'))
     kw_write("--file", "kwinrc", "--group", "Plugins",
@@ -378,6 +457,9 @@ def uninstall() -> None:
         # A reconfigure with liquidglassEnabled=false is an equivalent live
         # unload.  Only warn when neither live path reached KWin.
         warn(tr('Acrylic Glass live unload was not confirmed — log out once if window transparency remains'))
+
+    if not _restore_move_resize_opacity():
+        warn(tr('Previous window move opacity could not be restored — recovery state retained'))
 
     # Strip the whole [Effect-liquidglass] group — leaving it behind would
     # let a reinstall keep stale tuned values.
