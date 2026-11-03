@@ -144,7 +144,7 @@ inline std::optional<ClientBlurShape> clientBlurShape(const QRegion &region)
 // Build a per-pixel blur weight for the window's blur region. The blur stays
 // sharp at the glass edge and reaches full strength over a short inward
 // distance, avoiding a hard transition between blurred and crisp backdrop.
-inline QImage blurFalloffMask(const QRegion &region, int fadePixels = 6)
+inline QImage blurFalloffMask(const QRegion &region, int fadePixels = 10)
 {
     const QRect bounds = region.boundingRect();
     if (bounds.isEmpty()) {

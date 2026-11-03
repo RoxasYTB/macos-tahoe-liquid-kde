@@ -497,7 +497,10 @@ void BlurEffect::reconfigure(ReconfigureFlags flags)
     m_refractionWidth = static_cast<float>(BlurConfig::refractionWidth());
     m_highlightWidth = static_cast<float>(BlurConfig::highlightWidth());
     m_highlightStrength = static_cast<float>(BlurConfig::highlightStrength());
-    m_darkGradientOverlay = BlurConfig::darkGradientOverlay();
+    // Liquid Glass must preserve the live backdrop's own colors. A decorative
+    // overlay is especially visible on saturated app surfaces (e.g. Discord)
+    // and makes the sampled content appear pink even when the app is not.
+    m_darkGradientOverlay = false;
     m_materialOpacity = qBound(0.0, BlurConfig::materialOpacity(), 1.0);
     const auto gradientColor = [](const QColor &color, double opacity) {
         return QVector4D(color.redF(), color.greenF(), color.blueF(), qBound(0.0, opacity, 1.0));

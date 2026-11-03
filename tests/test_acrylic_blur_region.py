@@ -173,8 +173,9 @@ int main() {
         assert(weight >= previous);
         previous = weight;
     }
-    assert(qRed(progressive.pixel(0, 10)) < 64);
-    assert(qRed(progressive.pixel(5, 10)) == 255);
+    assert(qRed(progressive.pixel(0, 10)) < 16);
+    assert(qRed(progressive.pixel(5, 10)) > qRed(progressive.pixel(0, 10)));
+    assert(qRed(progressive.pixel(9, 10)) == 255);
     const auto square = clientBlurShape(QRegion(QRect(8, 12, 300, 32)));
     assert(square && square->radius == 0 && square->bounds == QRect(8, 12, 300, 32));
     assert(!square->integerEllipse && square->surfaceRect() == square->bounds);
@@ -203,6 +204,18 @@ def test_x11_plasma_popup_gets_alpha_visual_fallback_blur(repo):
     assert "cache.insert(visual, alphaVisual)" in helper
     assert "hasAlphaVisual(effects->xcbConnection(), attributes->visual)" in fallback
     assert "content = Region(w->contentsRect().toRect())" in fallback
+
+
+def test_liquid_glass_keeps_live_backdrop_colors_and_smooth_falloff(repo):
+    source = (repo / "src/offline/kwin-effects/acrylic-glass/src/effect.cpp").read_text()
+    shape = (repo / "src/offline/kwin-effects/acrylic-glass/src/roundedblurshape.h").read_text()
+    shader = (repo / "src/offline/kwin-effects/acrylic-glass/src/shaders/glass.glsl").read_text()
+    assert "m_darkGradientOverlay = false;" in source
+    assert "const bool nativeResolutionBlur = !dockSurface && m_nativeResolutionBlur;" in source
+    assert "blurFalloffMask(const QRegion &region, int fadePixels = 10)" in shape
+    assert "t * t * (3.0f - 2.0f * t)" in shape
+    assert "blitFromRenderTarget(renderTarget, viewport" in source
+    assert "surface.rgb = surface.rgb * (1.0 - tintAlpha) + tint;" in shader
 
 
 def test_real_svg_capsule_radius_at_fractional_scales(repo, tmp_path):
