@@ -6,7 +6,7 @@ Choose a preset, adjust its controls if desired, and press **Apply**.
 | Preset | Appearance |
 | --- | --- |
 | Tahoe | Smooth, rounded convex lensing over translucent glass with a light frosted blur. Default in Tahoe. |
-| Golden Gate | Tahoe's optical values with an 85% black tint that fades out at 55% of menu height. The lower 45% and Dock stay untinted. Default in Golden Gate. |
+| Golden Gate | Tahoe's optical values. The live glass stays untinted so the colors of the window behind it remain visible. |
 
 Each preset replaces the complete material: blur, opacity, refraction, color
 separation, highlights, grain, brightness, contrast, saturation and gradient.
@@ -34,41 +34,43 @@ strength**.
 background. Keep it at 1 for full material coverage; lower it to reveal more
 of the sharp background. The Dock uses a clearer centre while preserving the
 refracted rim; applet popups retain full blur coverage. Text and icons retain
-their own opacity. Gradient
-colors and strengths are independent of this coverage, so a lighter bottom
-does not lose its blur. Disable **Enable gradient** for an untinted material.
+their own opacity. The live material does not apply a colored gradient. This
+keeps app content such as Discord from taking on a pink or other preset tint.
+Gradient values remain in the preset schema for compatibility, but the KWin
+pass leaves the current scene colors unchanged.
 
-Popup blur fades from the sharp scene to full blur over the first 6 logical
-pixels inside each declared blur-region edge. The falloff mask is cached per
-view and region; the sharp and blurred samples both come from KWin's current
-scene, so foreground windows remain the refraction source.
+Popup blur fades smoothly from the sharp scene to full blur over the first 10
+logical pixels inside each declared blur-region edge. The falloff mask is
+cached per view and region; it describes only the spatial fade and contains no
+wallpaper or captured pixels. For every rendered frame, the effect captures
+the current KWin scene behind the popup and derives both the sharp and blurred
+samples from that live render target. A foreground window therefore remains
+the refraction source when it is behind the glass; no backdrop image is
+pre-baked.
 
 Selecting another preset replaces your material adjustments. **Restore this
-preset** reapplies the selected preset, including its gradient colors.
+preset** reapplies the selected preset values. The current live pass remains
+untinted regardless of saved gradient values.
 **Cancel** discards pending changes. Saved adjustments survive reopening the
 settings. Installing or reinstalling Acrylic Glass reapplies the complete
 preset of the repository being run: **Tahoe** from Tahoe, **Golden Gate** from
 Golden Gate. This replaces previous material selections and optical adjustments,
-including the gradient toggle and colors. Corners and window rules remain
-independent and are preserved.
+including stored gradient values. The live glass remains untinted in both
+editions. Corners and window rules remain independent and are preserved.
 
 Tahoe Plasma applet popups, tooltips, Qt menus and the detached search capsule
 use a 55% white fill in light mode. Dark-mode Plasma popups and Qt menus no
 longer add a client-side black fill, leaving the KWin glass material untinted.
-Golden Gate installs a nearly clear 1% white fill in dark mode, letting
-the upper gradient supply the dark tint while the lower part stays clear.
-Golden Gate light native Qt menus use a 60% white translucent surface so their
-dark system text remains readable above that gradient. This exception affects
-only the light Golden Gate Kvantum menu assets; other Golden Gate surfaces keep
-their existing fills.
+Golden Gate uses the same transparent popup fills; saved gradient values are
+not composited into the live glass. Light-mode menus retain their readable
+translucent client fills.
 Text follows the system window foreground throughout. The Dock
 uses identical assets in both modes and retains its thin transparent fill.
 Contours use a 0.75 logical-pixel dark outer line and a 0.75 logical-pixel
 light inner line, following each surface's native rounded mask. The Dock uses
-24% opacity on the outer line and 30% on the inner line for a visible thin edge. The gradient
-only tints the blurred backdrop; it does not change text, blur coverage,
-contours or the Dock. Both editions share surface geometry with edition-specific
-fills; there is no separate reduced-transparency mode.
+24% opacity on the outer line and 30% on the inner line for a visible thin edge.
+Both editions share surface geometry and untinted live glass; there is no
+separate reduced-transparency mode.
 GTK client-side popups keep their own readable fills; KWin cannot blur those
 surfaces in the same way as Plasma popups and Qt menus.
 
@@ -131,13 +133,12 @@ validates integration state, not the rendered image or GPU quality.
 - [Liquid Glass — SDF, normals, Snell refraction](https://rukkiecodes.github.io/liquid-glass/): an independent, open physics model and GPU shader implementation.
 - [Liquid Glass physics and derivations](https://github.com/sohumsuthar/liquid-glass): an independent ray-traced slab model, including thickness and Fresnel transmission.
 
-The Golden Gate preset adds a black upper gradient to menus in both appearance
-modes. It starts at 85% opacity and reaches zero at 55% of the surface height.
-The lower 45% retains untinted blurred glass. Launcher text has a soft, low-opacity
+Golden Gate retains legacy gradient settings for compatibility, but the live
+glass pass is untinted in both editions. Launcher text has a soft, low-opacity
 halo: white behind dark text and black behind light text. The halo is centered
 and diffused rather than drawn as a hard outline. In light mode, category pills
-use a translucent white backing to separate dark labels from the upper gradient.
-The Dock and panels use a clearer surface without the gradient: a smooth blur, less grain and 98% centre
+use a translucent white backing to separate dark labels from the backdrop.
+The Dock and panels use a clearer surface: a smooth blur, less grain and 98% centre
 coverage, with a mild angled refraction and a thin bright edge. Its compact
 Dual Kawase pyramid uses up to three levels, followed by a dense Gaussian
 finish. The finish samples adjacent texels instead of separating image copies.
@@ -149,6 +150,5 @@ the rim, with its strength independent of the Dock's length.
 These adjustments follow the selected material and its
 controls without changing saved settings; contextual menus keep their full blur.
 Applet popups retain the selected blur with full centre coverage. Golden Gate
-and Tahoe share every optical value; only the gradient differs. These numerical
-settings are project tuning, not values supplied by Apple. The black gradient
-darkens lighter backdrops and leaves a fully black backdrop black.
+and Tahoe share their live optical behavior. These numerical settings are
+project tuning, not values supplied by Apple.
