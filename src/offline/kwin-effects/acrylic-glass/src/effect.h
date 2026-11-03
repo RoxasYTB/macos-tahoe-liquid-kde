@@ -162,6 +162,12 @@ public:
     void prePaintWindow(RenderView* view, EffectWindow* w, WindowPrePaintData& data ACRYLIC_GLASS_PRESENT_TIME_PARAM) override;
 #endif
 
+#if defined(GLASS_X11) && !ACRYLIC_GLASS_KWIN_6_8
+    /// Plasma 6.7 X11 still dispatches paintWindow through the legacy ABI.
+    void paintWindow(const RenderTarget& renderTarget, const RenderViewport& viewport, EffectWindow* w,
+                     int mask, QRegion region, WindowPaintData& data) override;
+#endif
+
     /// The main entry point — KWin asks us to paint window ``w``; we
     /// either delegate to ``blur()`` (when blur is wanted) or fall back
     /// to the default opaque draw.

@@ -38,6 +38,21 @@ def test_acrylic_glass_enables_optional_x11_backend():
     assert "ACRYLIC_GLASS_WAYLAND_BACKGROUND_EFFECT_V1" in compat
 
 
+def test_legacy_x11_paint_window_runs_the_blur_pipeline():
+    """Plasma 6.7 X11 still dispatches paintWindow, unlike the 6.8 ABI."""
+    header = (ROOT / "src/effect.h").read_text(encoding="utf-8")
+    source = (ROOT / "src/effect.cpp").read_text(encoding="utf-8")
+    cmake = (ROOT / "src/CMakeLists.txt").read_text(encoding="utf-8")
+
+    assert "if(GLASS_KWIN_68_X11)" in cmake
+    assert "target_compile_definitions(liquidglass_x11 PRIVATE GLASS_KWIN_68)" in cmake
+    assert "#if defined(GLASS_X11) && !ACRYLIC_GLASS_KWIN_6_8" in header
+    assert "void paintWindow(const RenderTarget& renderTarget" in header
+    legacy = source.split("void BlurEffect::paintWindow(", 1)[1].split("#endif", 1)[0]
+    assert "blur(renderTarget, viewport, w, mask, region, data);" in legacy
+    assert "effects->paintWindow(renderTarget, viewport, w, mask, region, data);" in legacy
+
+
 def test_acrylic_glass_requests_only_present_backend_sdks(monkeypatch):
     from steps import acrylic_glass
 

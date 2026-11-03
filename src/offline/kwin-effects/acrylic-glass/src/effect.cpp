@@ -1094,6 +1094,15 @@ bool BlurEffect::shouldBlur(const EffectWindow* w, int mask, const WindowPaintDa
 /// Delegate to ``blur()`` (which handles its own shouldBlur gate
 /// internally), then defer to KWin's default to draw the actual window
 /// content on top of the blurred background.
+#if defined(GLASS_X11) && !ACRYLIC_GLASS_KWIN_6_8
+void BlurEffect::paintWindow(const RenderTarget& renderTarget, const RenderViewport& viewport,
+                             EffectWindow* w, int mask, QRegion region, WindowPaintData& data)
+{
+    blur(renderTarget, viewport, w, mask, region, data);
+    effects->paintWindow(renderTarget, viewport, w, mask, region, data);
+}
+#endif
+
 AcrylicGlassDrawWindowResult BlurEffect::drawWindow(
     const RenderTarget& renderTarget, const RenderViewport& viewport, EffectWindow* w, int mask, const Region& deviceRegion, WindowPaintData& data)
 {
