@@ -171,7 +171,13 @@
        <item>
         <widget class="QGroupBox" name="gradientGroup">
          <property name="title">
-          <string>Gradient</string>
+          <string>Gradient tint (disabled)</string>
+         </property>
+         <property name="toolTip">
+          <string>Live glass preserves the colors of the current scene. Gradient tint is disabled to avoid recoloring app content.</string>
+         </property>
+         <property name="enabled">
+          <bool>false</bool>
          </property>
          <layout class="QFormLayout" name="gradientGroupForm">
           <item row="0" column="0">
