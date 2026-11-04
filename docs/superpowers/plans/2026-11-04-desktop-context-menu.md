@@ -107,3 +107,9 @@
 - KDE Plasma desktop containment context-menu plugin: https://github.com/KDE/plasma-workspace/blob/master/containmentactions/contextmenu/menu.cpp
 
 These links identify the upstream implementation used to distinguish the desktop menu from the Dock task-manager popup. The active implementation must still be checked against the exact local Plasma/KDE version before any compatibility claim.
+
+## 5 November isolated render
+
+- Re-ran the private Xorg `:160` + D-Bus Plasma harness using the current committed dark Kvantum assets, current wallpaper, and a private copy of the Liquid Glass effect. KWin reported `liquidglass` active and its process map showed the private plugin path; Plasma loaded Kvantum from the private config.
+- The real desktop containment menu was captured resting and hovered at `/tmp/tahoe-plasma-menu-xorg-glass-final-20261104/desktop-context-menu.png` and `desktop-context-menu-hover.png`. This confirms the current source renders through the real Plasma menu path in isolation.
+- Remaining visible gap: the inner center fill still reads more rectangular than the rounded outer frame. KDE's native action labels and list remain as supplied by Plasma; the macOS Finder actions are not substituted. No active desktop services or settings were changed.
