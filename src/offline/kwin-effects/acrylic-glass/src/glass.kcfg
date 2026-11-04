@@ -61,7 +61,7 @@ xembedsniproxy</default>
             <default>false</default>
         </entry>
         <entry name="RgbDriftStrength" type="Double">
-            <default>1.0</default>
+            <default>0.0</default>
         </entry>
         <entry name="MagnifyGlassStrength" type="Double">
             <default>0.25</default>

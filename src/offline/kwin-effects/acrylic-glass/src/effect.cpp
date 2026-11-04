@@ -1147,7 +1147,10 @@ AcrylicGlassDrawWindowResult BlurEffect::drawWindow(
 /// whole noise pass in that case.
 GLTexture* BlurEffect::ensureNoiseTexture()
 {
-    if (m_noiseStrength == 0) {
+    // Noise pixels are generated with rand() % strength. At strengths 0 and
+    // 1 the grain is identically zero, so the extra texture and pass cannot
+    // change the rendered image.
+    if (m_noiseStrength <= 1) {
         return nullptr;
     }
 
@@ -1775,21 +1778,20 @@ void BlurEffect::blur(
                 shader->setUniform(m_noisePass.boxLocation,
                     QVector4D(shapeBox.center().x(), shapeBox.center().y(), shapeBox.width() * 0.5, shapeBox.height() * 0.5));
                 shader->setUniform(m_noisePass.cornerRadiusLocation, QVector4D(radius, radius, radius, radius));
-                shader->setUniform(m_noisePass.cornerSquircleLocation, 0.0f);
+                shader->setUniform(m_noisePass.cornerSquircleLocation, shape.squircleBlend);
                 shader->setUniform(m_noisePass.blurSizeLocation, QVector2D(shapeBox.width(), shapeBox.height()));
             } else {
                 shader->setUniform(m_roundedOnscreenPass.boxLocation,
                     QVector4D(shapeBox.center().x(), shapeBox.center().y(), shapeBox.width() * 0.5, shapeBox.height() * 0.5));
                 shader->setUniform(m_roundedOnscreenPass.cornerRadiusLocation, QVector4D(radius, radius, radius, radius));
-                shader->setUniform(m_roundedOnscreenPass.cornerSquircleLocation, 0.0f);
+                shader->setUniform(m_roundedOnscreenPass.cornerSquircleLocation, shape.squircleBlend);
                 shader->setUniform(m_roundedOnscreenPass.blurSizeLocation, QVector2D(shapeBox.width(), shapeBox.height()));
-                // Each card is its own shallow glass lens. Reduce the broad
-                // centre dome and chromatic drift so nearby content bends
-                // mostly at the rim, like macOS Control Center capsules.
+                // Preserve the original capsule refraction calibration;
+                // keep chromatic drift independently controlled by config.
                 shader->setUniform(m_roundedOnscreenPass.magnifyGlassStrengthLocation,
                                    m_magnifyGlassStrength * 0.55f);
                 shader->setUniform(m_roundedOnscreenPass.rgbDriftStrengthLocation,
-                                   float(m_rgbDriftStrength * viewport.scale() * 0.65f));
+                                   float(m_rgbDriftStrength * viewport.scale() * 0.20f));
             }
             vbo->draw(GL_TRIANGLES, 6, vertexCount);
         }
@@ -1802,7 +1804,7 @@ void BlurEffect::blur(
     ShaderManager::instance()->popShader();
 
     // 9. Grain pass (optional)
-    if (m_noiseStrength > 0) {
+    if (m_noiseStrength > 1) {
         // Additive noise over the blurred image. Masks banding artefacts
         // that show up in smooth gradients after heavy blur.
 

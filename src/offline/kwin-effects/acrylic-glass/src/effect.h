@@ -383,7 +383,7 @@ private:
     float m_offset; ///< Kawase tap offset; 0.0 means "no blur, passthrough".
     float m_dockOffset; ///< Compact Dock pyramid tap spacing, increasing with BlurStrength.
     int m_expandSize; ///< Pixels of dirty-region expansion needed for taps near the rim.
-    int m_noiseStrength; ///< 0..N grain intensity; 0 disables the noise pass entirely.
+    int m_noiseStrength; ///< 0..N grain intensity; 0 and 1 both produce no visible grain.
 
     QStringList m_windowClasses; ///< Window-class list for the blur-match filter.
     bool m_whitelist; ///< True: only blur listed classes. False: blur everything except listed.

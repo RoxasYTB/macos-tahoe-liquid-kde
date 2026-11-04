@@ -6,6 +6,7 @@
 #include <QPainter>
 #include <QRegion>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <optional>
@@ -112,6 +113,7 @@ struct ClientBlurShape
     QRect bounds;
     float radius;
     bool integerEllipse = false;
+    float squircleBlend = 0.0f;
 
     // Integer ellipse masks clip partial coverage asymmetrically. Keep the
     // antialiasing ramp inside their region, beneath the client's SVG edge.
@@ -125,6 +127,109 @@ struct ClientBlurShape
         return integerEllipse ? std::max(0.0f, radius - 1.0f) : radius;
     }
 };
+
+// Fit the rounded/superelliptic profile used by a single client glass card.
+// The app publishes only an alpha-derived blur region, so recover both its
+// corner radius and its circle-to-squircle blend from the actual mask.
+inline std::optional<ClientBlurShape> fitClientBlurShape(const QRegion &region)
+{
+    if (region.isEmpty()) return std::nullopt;
+    const QRect bounds = region.boundingRect();
+    if (region == QRegion(bounds)) return ClientBlurShape{bounds, 0.0f};
+    if (bounds.height() < 4 || bounds.width() < 4) return std::nullopt;
+
+    const QRect first = region.intersected(QRect(bounds.x(), bounds.y(), bounds.width(), 1)).boundingRect();
+    if (first.isEmpty()) return std::nullopt;
+    const int inset = std::max(0, first.left() - bounds.left());
+    const int estimate = qRound(inset + 0.5 + std::sqrt(inset));
+    const int maximum = std::min(bounds.width(), bounds.height()) / 2;
+    const int radiusStart = std::max(1, estimate - 8);
+    const int radiusEnd = std::min(maximum, estimate + 8);
+    constexpr float blends[] = {0.0f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f, 1.0f};
+    qint64 bestError = std::numeric_limits<qint64>::max();
+    int bestRadius = 0;
+    float bestBlend = 0.0f;
+    const float halfWidth = bounds.width() * 0.5f;
+    const float halfHeight = bounds.height() * 0.5f;
+
+    // QRegion::contains() is expensive for alpha masks with hundreds of
+    // scanline rectangles. Rasterize once so the candidate fit remains cheap
+    // even when the client publishes a supersampled SVG mask.
+    std::vector<uchar> coverage(size_t(bounds.width()) * size_t(bounds.height()), 0);
+    for (const QRect &rect : region) {
+        const QRect local = rect.translated(-bounds.topLeft());
+        for (int y = local.top(); y <= local.bottom(); ++y) {
+            std::fill_n(coverage.data() + size_t(y) * size_t(bounds.width()) + size_t(local.left()),
+                        size_t(local.width()), uchar(1));
+        }
+    }
+
+    // Every candidate is guaranteed to cover the central cross of the
+    // bounds. Compare that part once, then evaluate only the four corner
+    // patches where radius and squircle exponent can change coverage. The
+    // previous full-image scan ran hypot()/pow() for every pixel and every
+    // candidate; this keeps the expensive fit proportional to r^2 instead
+    // of the whole card area.
+    qint64 centralError = 0;
+    const float centralX = halfWidth - radiusEnd;
+    const float centralY = halfHeight - radiusEnd;
+    for (int y = 0; y < bounds.height(); ++y) {
+        const float py = std::abs((y + 0.5f) - halfHeight);
+        for (int x = 0; x < bounds.width(); ++x) {
+            const float px = std::abs((x + 0.5f) - halfWidth);
+            if (px <= centralX || py <= centralY) {
+                if (coverage[size_t(y) * size_t(bounds.width()) + size_t(x)] == 0) {
+                    ++centralError;
+                }
+            }
+        }
+    }
+    const int cornerWidth = std::min(bounds.width(), radiusEnd);
+    const int cornerHeight = std::min(bounds.height(), radiusEnd);
+    constexpr size_t blendCount = sizeof(blends) / sizeof(blends[0]);
+    for (int radius = radiusStart; radius <= radiusEnd; ++radius) {
+        std::array<qint64, blendCount> errors;
+        errors.fill(centralError);
+        for (int cornerY = 0; cornerY < 2; ++cornerY) {
+            const int yStart = cornerY == 0 ? 0 : bounds.height() - cornerHeight;
+            const int yEnd = cornerY == 0 ? cornerHeight : bounds.height();
+            for (int y = yStart; y < yEnd; ++y) {
+                const float py = std::abs((y + 0.5f) - halfHeight);
+                for (int cornerX = 0; cornerX < 2; ++cornerX) {
+                    const int xStart = cornerX == 0 ? 0 : bounds.width() - cornerWidth;
+                    const int xEnd = cornerX == 0 ? cornerWidth : bounds.width();
+                    for (int x = xStart; x < xEnd; ++x) {
+                        const float px = std::abs((x + 0.5f) - halfWidth);
+                        if (px <= centralX || py <= centralY) continue;
+                        const float qx = px - halfWidth + radius;
+                        const float qy = py - halfHeight + radius;
+                        const float outsideX = std::max(qx, 0.0f);
+                        const float outsideY = std::max(qy, 0.0f);
+                        const float base = std::min(std::max(qx, qy), 0.0f) - radius;
+                        const float circular = std::hypot(outsideX, outsideY);
+                        const float superelliptic = std::pow(std::pow(outsideX, 4.0f) + std::pow(outsideY, 4.0f), 0.25f);
+                        const bool covered = coverage[size_t(y) * size_t(bounds.width()) + size_t(x)] != 0;
+                        for (size_t blend = 0; blend < blendCount; ++blend) {
+                            const float distance = base + circular * (1.0f - blends[blend])
+                                + superelliptic * blends[blend];
+                            if ((distance <= 0.0f) != covered) ++errors[blend];
+                        }
+                    }
+                }
+            }
+        }
+        for (size_t blend = 0; blend < blendCount; ++blend) {
+            if (errors[blend] < bestError) {
+                bestError = errors[blend];
+                bestRadius = radius;
+                bestBlend = blends[blend];
+            }
+        }
+    }
+    const qint64 area = qint64(bounds.width()) * bounds.height();
+    if (bestRadius == 0 || bestError > area / 12) return std::nullopt;
+    return ClientBlurShape{bounds, float(bestRadius), false, bestBlend};
+}
 
 inline std::optional<ClientBlurShape> clientBlurShape(const QRegion &region)
 {
@@ -170,7 +275,7 @@ inline std::vector<ClientBlurShape> clientBlurShapes(const QRegion &region)
                 }
             }
         }
-        if (const auto shape = clientBlurShape(component)) {
+        if (const auto shape = fitClientBlurShape(component)) {
             shapes.push_back(*shape);
             continue;
         }
