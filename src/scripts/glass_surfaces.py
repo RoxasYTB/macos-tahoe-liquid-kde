@@ -122,6 +122,22 @@ def soften_menu_frame(root: ET.Element) -> None:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
 
+def add_subtle_menu_surface(root: ET.Element, opacity: str = "0.32") -> None:
+    """Keep a light neutral veil inside the menu, without tinting its glass."""
+    for node in surface_nodes(root, ("menu-normal",)):
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        fill = style.get("fill", node.get("fill"))
+        alpha = float(style.get("opacity", node.get("opacity", "1")))
+        if fill != "#000000" or alpha != 0.0:
+            continue
+        if "opacity" in style:
+            style["opacity"] = opacity
+        else:
+            node.set("opacity", opacity)
+        if style:
+            node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
+
+
 def _write_svg(path: Path, root: ET.Element) -> None:
     ET.register_namespace("", _SVG)
     ET.register_namespace("xlink", _XLINK)
@@ -176,4 +192,5 @@ def apply_kvantum_surface_defaults(path: Path) -> None:
     if wallpaper == "MacTahoe" and is_dark:
         clear_menu_client_fill(root)
         soften_menu_frame(root)
+        add_subtle_menu_surface(root)
     _write_svg(path, root)
