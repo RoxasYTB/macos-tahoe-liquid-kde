@@ -9,14 +9,16 @@ import sys
 import pytest
 
 
-def test_light_and_dark_menu_surfaces_keep_matching_frame_opacity(repo):
+def test_menu_interior_is_lighter_than_its_preserved_frame(repo):
     svg = pytest.importorskip("PyQt6.QtSvg")
     gui = pytest.importorskip("PyQt6.QtGui")
     core = pytest.importorskip("PyQt6.QtCore")
     import configparser
 
-    samples = []
-    for name in ("mac-tahoe-liquid-kde", "mac-tahoe-liquid-kdeDark"):
+    expected = ((.38, .55), (.34, .48))
+    for name, (interior_alpha, frame_alpha) in zip(
+        ("mac-tahoe-liquid-kde", "mac-tahoe-liquid-kdeDark"), expected
+    ):
         root = repo / "src/offline/kvantum/mac-tahoe-liquid-kde"
         config = configparser.ConfigParser(interpolation=None, strict=False)
         config.read(root / (name + ".kvconfig"))
@@ -30,11 +32,11 @@ def test_light_and_dark_menu_surfaces_keep_matching_frame_opacity(repo):
             renderer.render(painter, element, core.QRectF(0, 0, 64, 64))
             painter.end()
             alphas.append(image.pixelColor(48, 48).alpha() * factor)
-        assert len(set(alphas)) == 1, "Popup frame and interior must match"
-        samples.append(alphas[0])
-    # Dark menus are slightly clearer than the unchanged light surfaces.
-    assert abs(samples[0] / 255 - .55) < .01
-    assert abs(samples[1] / 255 - .48) < .01
+        assert alphas[0] < alphas[1] and alphas[0] < alphas[2], (
+            "The square menu interior should be softer than the rounded frame"
+        )
+        assert abs(alphas[0] / 255 - interior_alpha) < .01
+        assert all(abs(alpha / 255 - frame_alpha) < .01 for alpha in alphas[1:])
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
