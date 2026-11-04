@@ -122,6 +122,14 @@ is visible but the row field remains inset and rectangular; that is the next
 surface integration issue to address. Neither experiment changed the local
 Kvantum config or the user's desktop.
 
+A separate private test set `[Menu] interior.element=none` while keeping the
+13 px frame margins. It removed the inset rectangular fill in the real Plasma
+capture, but failed `test_native_qt_menu_text_contrasts_with_each_theme` in the
+dark profile: 0 sampled pixels reached 4.5:1 contrast. That option was
+discarded and the source configs retain `interior.element=menu`. A replacement
+needs a rounded interior surface that still passes the native text contrast
+check.
+
 ## Limits and probe corrections
 
 These are toolkit-family and frame checks, not an assertion that every external
