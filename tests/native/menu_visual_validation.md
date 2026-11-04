@@ -98,6 +98,30 @@ geometry and preset were used. The prior #89 cutout/noise and desktop-eligibilit
 controls remain covered by `test_corner_rendering.py` and the combined-effect
 capture probe.
 
+## Real Plasma desktop menu — 2026-11-04
+
+The installed Plasma Folder View context menu was opened in a private Xorg
+dummy display (`:162`) with private HOME/XDG, D-Bus, KWin X11 and Plasma. The
+menu and its real `Create New` submenu were captured at
+`/tmp/tahoe-plasma-menu-submenu-20261104/desktop-context-menu.png` and
+`desktop-context-menu-submenu.png`; the hovered parent row is in
+`desktop-context-menu-hover.png`. KWin's `/Effects` API reported
+`liquidglass` active, and `/proc/<kwin-pid>/maps` confirmed the private plugin
+copy. The submenu screenshot keeps the live wallpaper visible through both
+surfaces. This checks the real action/submenu path and compositor integration
+for the installed dark profile; it does not claim light-profile parity or
+keyboard traversal. The active desktop session was not touched.
+
+The menu was recaptured at the reference position `(1000, 327)` on the same
+1920 × 1080 wallpaper. A private three-way crop is available at
+`/tmp/tahoe-plasma-menu-aligned-20261104/desktop-context-menu-aligned-comparison.png`
+(macOS reference, current KDE with 13 px frame margins, and a private 0 px
+margin experiment). The 0 px experiment loses the rounded outer shape, so the
+existing 13 px local setting is retained. With 13 px, the rounded outer frame
+is visible but the row field remains inset and rectangular; that is the next
+surface integration issue to address. Neither experiment changed the local
+Kvantum config or the user's desktop.
+
 ## Limits and probe corrections
 
 These are toolkit-family and frame checks, not an assertion that every external
