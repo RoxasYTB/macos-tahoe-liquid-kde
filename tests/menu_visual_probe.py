@@ -258,7 +258,12 @@ PlasmaCore.Dialog {
                 json.dumps([center.x() + local.x(), center.y() + local.y() + 18])
             )
 
-        QTimer.singleShot(600, request_input)
+        if case == "context":
+            # Opening a QMenu is deterministic without a synthetic click and
+            # avoids depending on the optional KWayland fake-input helper.
+            QTimer.singleShot(600, show)
+        else:
+            QTimer.singleShot(600, request_input)
     else:
         QTimer.singleShot(600, show)
     app.exec()
