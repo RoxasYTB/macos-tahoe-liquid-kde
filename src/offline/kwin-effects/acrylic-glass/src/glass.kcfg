@@ -20,24 +20,18 @@
         <entry name="BlurDuringMoveResize" type="Bool">
             <default>false</default>
         </entry>
-        <!-- cairo-dock renders its own dock surface; glassing it draws a
-             phantom glass panel behind the dock. kwin_wayland is the
-             resource class of KWin's own input-method candidate popups;
-             glassing them draws a huge misplaced border. linux-wallpaperengine
-             renders its own live-wallpaper surface with the same artifact.
-             xembedsniproxy's offscreen legacy-tray windows otherwise produce
-             a stray glass circle around the pointer. -->
+        <!-- Limit glass to Plasma-owned UI surfaces and the standalone Tahoe
+             Control Center. Ordinary application windows remain crisp, so
+             the Control Center samples their real, un-glassed content. -->
         <entry name="WindowClasses" type="String">
-            <default>cairo-dock
-kwin_wayland
-linux-wallpaperengine
-xembedsniproxy</default>
+            <default>plasmashell
+tahoe-control-center</default>
         </entry>
         <entry name="BlurMatching" type="Bool">
-            <default>false</default>
+            <default>true</default>
         </entry>
         <entry name="BlurNonMatching" type="Bool">
-            <default>true</default>
+            <default>false</default>
         </entry>
         <entry name="WindowBorderClasses" type="String">
             <default></default>

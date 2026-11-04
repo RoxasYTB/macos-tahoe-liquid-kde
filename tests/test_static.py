@@ -345,16 +345,8 @@ def test_acrylic_glass_qrc_entries_all_staged_by_cmake(repo):
     assert 'file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}' not in cml
 
 
-def test_acrylic_glass_ships_default_blur_denylist(offline):
-    """WindowClasses ships as a blacklist (BlurMatching defaults false) with
-    four entries baked in: cairo-dock (glassing the dock window
-    renders a phantom panel behind it), kwin_wayland (KWin's own
-    input-method candidate popups report that resource class, and
-    glassing them produces a huge misplaced border), and
-    linux-wallpaperengine (same artifact on its live-wallpaper
-    surface), and xembedsniproxy (its offscreen legacy-tray windows
-    produce a stray glass circle). All four must survive edits to the
-    kcfg default."""
+def test_acrylic_glass_defaults_to_plasma_and_control_center_only(offline):
+    """Glass only theme UI and the standalone Control Center by default."""
     kcfg = (offline / "kwin-effects/acrylic-glass/src/glass.kcfg").read_text()
     m = re.search(
         r'<entry name="WindowClasses" type="String">\s*'
@@ -362,20 +354,20 @@ def test_acrylic_glass_ships_default_blur_denylist(offline):
         kcfg, re.DOTALL,
     )
     assert m, "WindowClasses entry not found in glass.kcfg"
-    denylist = [line.strip() for line in m.group(1).splitlines() if line.strip()]
-    assert "cairo-dock" in denylist
-    assert "kwin_wayland" in denylist
-    assert "linux-wallpaperengine" in denylist
-    assert "xembedsniproxy" in denylist
+    allowlist = [line.strip() for line in m.group(1).splitlines() if line.strip()]
+    assert allowlist == ["plasmashell", "tahoe-control-center"]
 
     matching = re.search(
         r'<entry name="BlurMatching" type="Bool">\s*<default>(\w+)</default>',
         kcfg,
     )
-    assert matching and matching.group(1) == "false", (
-        "BlurMatching default flipped to true — WindowClasses would now "
-        "act as a whitelist, silently un-excluding the denylist entries"
+    assert matching and matching.group(1) == "true"
+
+    nonmatching = re.search(
+        r'<entry name="BlurNonMatching" type="Bool">\s*<default>(\w+)</default>',
+        kcfg,
     )
+    assert nonmatching and nonmatching.group(1) == "false"
 
 
 def test_no_legacy_apply_service_in_offline(offline):

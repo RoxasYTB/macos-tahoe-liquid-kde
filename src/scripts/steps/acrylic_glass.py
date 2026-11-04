@@ -125,6 +125,12 @@ _CORNER_DEFAULTS = (
     ("PopupCornerRadius", "6"),
 )
 
+_WINDOW_FILTER_DEFAULTS = (
+    ("WindowClasses", "plasmashell\ntahoe-control-center"),
+    ("BlurMatching", "true"),
+    ("BlurNonMatching", "false"),
+)
+
 def _edition_preset() -> dict[str, str]:
     # The KCM and installer apply the same complete material.
     presets = json.loads((SRC / "src/presets.json").read_text())
@@ -155,6 +161,11 @@ def _install_corner_defaults() -> None:
     write. KConfig's cascade handles both user and system configuration.
     """
     _install_missing_defaults(_CORNER_DEFAULTS)
+
+
+def _install_window_filter_defaults() -> None:
+    """Glass Plasma surfaces and the Tahoe app, leaving other apps crisp."""
+    _install_missing_defaults(_WINDOW_FILTER_DEFAULTS)
 
 
 def _snapshot_move_resize_opacity() -> bool:
@@ -388,8 +399,8 @@ def install() -> None:
 
     material_applied = _install_material_preset()
     _install_corner_defaults()
-    _install_missing_defaults((("BlurDecorations", "true"),
-                               ("BlurMatching", "false"), ("BlurNonMatching", "true")))
+    _install_missing_defaults((("BlurDecorations", "true"),))
+    _install_window_filter_defaults()
     if _install_opaque_move_resize():
         ok(tr('Window move opacity disabled for smoother dragging'))
     if material_applied:

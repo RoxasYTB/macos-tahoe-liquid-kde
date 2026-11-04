@@ -307,6 +307,41 @@ def test_gradient_default_preserves_saved_toggle(monkeypatch, saved):
     assert [args[-2:] for args in writes] == ([("DarkGradientOverlay", "true")] if saved is None else [])
 
 
+def test_window_filter_defaults_seed_allowlist_and_preserve_custom(monkeypatch):
+    from subprocess import CompletedProcess
+    from steps import acrylic_glass
+
+    values = {}
+    writes = []
+    monkeypatch.setattr(acrylic_glass, "have", lambda command: True)
+
+    def read(command, **kwargs):
+        key = command[command.index("--key") + 1]
+        return CompletedProcess(command, 0, values.get(key, command[-1]) + "\n")
+
+    def write(*args):
+        key, value = args[-2:]
+        writes.append((key, value))
+        values[key] = value
+        return True
+
+    monkeypatch.setattr(acrylic_glass, "run_user", read)
+    monkeypatch.setattr(acrylic_glass, "kw_write", write)
+
+    acrylic_glass._install_window_filter_defaults()
+    assert values == {
+        "WindowClasses": "plasmashell\ntahoe-control-center",
+        "BlurMatching": "true",
+        "BlurNonMatching": "false",
+    }
+
+    values["WindowClasses"] = "custom-app"
+    before = list(writes)
+    acrylic_glass._install_window_filter_defaults()
+    assert values["WindowClasses"] == "custom-app"
+    assert writes == before
+
+
 def test_corner_defaults_only_seed_missing_keys(monkeypatch):
     from subprocess import CompletedProcess
     from steps import acrylic_glass
