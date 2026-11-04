@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import resource
+import re
 import shlex
 import shutil
 import signal
@@ -54,6 +55,10 @@ def qt_client(case, output):
         QDialog,
     )
 
+    if case == "context":
+        # Qt/XWayland derives WM_CLASS from argv[0], not only the desktop file
+        # name. Match plasmashell so KWin applies the production class filter.
+        sys.argv[0] = "plasmashell"
     def report_error(exc_type, exc, tb):
         import traceback
 
@@ -65,7 +70,10 @@ def qt_client(case, output):
 
     sys.excepthook = report_error
     app = QApplication(sys.argv)
-    app.setDesktopFileName("mttkde-popup-probe")
+    # The desktop Folder View menu is owned by plasmashell. Give the
+    # deterministic context-menu case the same KWin resource class so the
+    # production WindowClasses filter and Plasma-popup handling are exercised.
+    app.setDesktopFileName("plasmashell" if case == "context" else "mttkde-popup-probe")
     if case == "background":
 
         class Background(QWidget):
@@ -478,10 +486,25 @@ def inside(output):
             assert (
                 client.poll() is None
             ), f"{case} exited ({client.returncode}); inspect client.log"
+            if case == "context" and os.environ["PROBE_BACKEND"] == "xcb":
+                xids = subprocess.run(
+                    ["xprop", "-root", "_NET_CLIENT_LIST"], env=env,
+                    check=True, capture_output=True, text=True, timeout=5,
+                ).stdout
+                classes = []
+                for xid in re.findall(r"0x[0-9a-fA-F]+", xids):
+                    props = subprocess.run(
+                        ["xprop", "-id", xid, "WM_CLASS", "WM_NAME"], env=env,
+                        check=False, capture_output=True, text=True, timeout=5,
+                    ).stdout.strip()
+                    if props:
+                        classes.append(f"{xid}: {props}")
+                (case_output / "wm-classes.txt").write_text("\n".join(classes) + "\n")
             for state in ("on", "off"):
-                for effect in ("liquidglass", "kwin4_effect_shapecorners"):
-                    if state == "off":
-                        dbus("/Effects", "org.kde.kwin.Effects.unloadEffect", effect)
+                if state == "off":
+                    # Keep rounded-window handling constant so the on/off
+                    # comparison measures Liquid Glass itself.
+                    dbus("/Effects", "org.kde.kwin.Effects.unloadEffect", "liquidglass")
                 time.sleep(0.7)
                 if state == "on":
                     active = dbus(
@@ -584,7 +607,7 @@ def run(args):
               for key, value in profile["values"].items()}
     preset.update(_CORNER_DEFAULTS)
     preset["MaterialPreset"] = str(profile["value"])
-    preset["WindowClasses"] = "capture-desktop"
+    preset["WindowClasses"] = "plasmashell"
     (output / "config/kwinrc").write_text(
         "[Plugins]\nblurEnabled=false\nliquidglassEnabled=false\nkwin4_effect_shapecornersEnabled=false\n"
         "[Windows]\nPlacement=Centered\n[Effect-liquidglass]\n"
