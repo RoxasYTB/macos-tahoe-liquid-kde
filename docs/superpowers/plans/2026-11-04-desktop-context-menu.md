@@ -47,12 +47,19 @@
 
 **Deliverable:** The menu panel has a translucent material, clearly rounded corners, a restrained shadow and edge treatment. The contents keep KDE's actual `QAction`s. The surface uses the `menu` SVG element and its normal nine-patch/shadow hints, with light and dark values chosen from their corresponding profiles. Preserve the existing user's 13 px `[Menu]` frame-margin edits while testing them; do not reset the file to `HEAD`.
 
-- [ ] Build the native probe helper with `cmake -S tests/native -B build/menu-probe && cmake --build build/menu-probe -j 2`; build Acrylic Glass with `cmake -S src/offline/kwin-effects/acrylic-glass -B build/capture-build -DCMAKE_BUILD_TYPE=Release && cmake --build build/capture-build -j 2`; use the project's verified Rounded Corners build at `build/online/kde-rounded-corners/build`.
-- [ ] Capture a baseline into a new ignored directory with `python tests/menu_visual_probe.py --glass build/capture-build/src/liquidglass.so --rounded build/online/kde-rounded-corners/build/bin/kwin/effects/plugins/kwin4_effect_shapecorners.so --shaders build/online/kde-rounded-corners/build/src/shaders --cases context submenu --mode Light --backend xcb --output build/desktop-context-menu-baseline-light`.
+- [ ] Build the native probe helper with `cmake -S tests/native -B build/menu-probe && cmake --build build/menu-probe -j 2`. For this host, use the installed effect binaries only as inputs to the private KWin probe; the probe copies them into its own session and never changes the active compositor.
+- [ ] Capture a baseline into a new ignored directory using the installed plugin paths and host shader directory: `glass=$(find /usr/lib -type f -name liquidglass.so -print -quit); rounded=$(find /usr/lib -type f -name kwin4_effect_shapecorners.so -print -quit); test -n "$glass" -a -n "$rounded"; python3 tests/menu_visual_probe.py --glass "$glass" --rounded "$rounded" --shaders /usr/share/kwin/shaders --cases context submenu --mode Light --backend xcb --output build/desktop-context-menu-baseline-light`.
 - [ ] Render `menu-normal` and its shadow at 1× and 2× with the existing menu SVG frame probe; compare the current surface against the reference crop at its native scale.
 - [ ] Adjust only the menu surface/frame/shadow fields and `menu-normal` SVG artwork needed to produce the floating rounded shape. Keep the 3 px layout frame and the 13 px local `[Menu]` frame margins intact unless a before/after probe proves an adjustment is required.
 - [ ] Mirror the same structural change in the dark profile, using its existing dark palette and alpha values.
 - [ ] Run `pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py` and the light/dark isolated `context` probe; confirm the probe uses its private compositor and does not touch the active session.
+
+#### Baseline evidence — 2026-11-04
+
+- The private native compositor probe was attempted with `cmake -S tests/native -B build/menu-probe`; configuration stops because this host has no KWayland development package (`KWaylandConfig.cmake`). No package was installed and the active desktop was left untouched.
+- A narrower Xvfb/QMenu capture was obtained with private HOME/XDG settings at `/tmp/tahoe-qmenu-light-20261104-final/context-menu.png` and `/tmp/tahoe-qmenu-dark-20261104-final2/context-menu.png`. These confirm the bundled Kvantum profile renders a rounded native QMenu surface and preserves the generic submenu arrow, but they have no KWin compositor and do not validate live blur, refraction, Plasma's actual containment-action list, or the full desktop menu route.
+- `tests/test_menu_rounding.py` previously assumed every selected row was opaque; the dark profile intentionally paints its selection at 36% opacity. The probe now checks nonzero center alpha while retaining the scale/geometry invariants. `python3 -m pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py --tb=short` passes: 9 passed, 3 skipped.
+- The light and dark captures remain temporary evidence only and are not committed. The complete private KWin baseline and actual Plasma desktop action-path capture remain outstanding.
 
 ### Task 3: Match row, hover, separator and submenu treatment
 
