@@ -90,7 +90,7 @@ def test_native_corner_defaults_preserve_present_values(tmp_path, value):
     subprocess.run([sys.executable, "-c", script], env=env, check=True, timeout=20)
     assert config_file.read_bytes() == after_first
     for key, expected in (("WindowCornerRadius", "22" if value is None else value),
-                          ("DockCornerRadius", "20"), ("PopupCornerRadius", "6"),
+                          ("DockCornerRadius", "20"), ("PopupCornerRadius", "14"),
                           ("CustomSetting", "untouched")):
         result = subprocess.run(["kreadconfig6", "--file", "kwinrc", "--group",
                                  "Effect-liquidglass", "--key", key], env=env,

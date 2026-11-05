@@ -270,3 +270,45 @@ positions tooltips at the real cursor and avoids an intermediate screenshot
 before the readiness check. The complete final light/dark Xwayland runs pass;
 failed exploratory runs are not counted above. Python callback failures also
 leave an explicit `client-error.txt` instead of a silent Qt abort.
+
+### Separate submenu selection checkpoint — 2026-11-05
+
+The supplied macOS screenshot is stored in the Control Center repository as
+`desktop-context-menu-sort-by-submenu.png`. It contains both the muted mauve
+hover on the parent `Sort By` row and the blue selected `Kind` row in its child
+menu. The Light Kvantum profile's shared selected-row color was therefore
+changed to a muted plum/mauve (`#8a4b64`, opacity 0.90). The bundled Kvantum
+1.1.8 Qt 6 engine now paints a rounded `#556fc4` selection only when the
+selected row belongs to a submenu; it identifies the submenu through the
+submenu action's association with its parent `QMenu`. Parent rows retain the
+existing Kvantum hover path. The engine patch is
+`src/offline/kvantum-engine/tahoe-menu-selection.patch`, applied after the
+bundled archive digest and path checks during extraction.
+
+Measured from the original 1011 × 730 reference and the isolated real Plasma
+render, the root hover sample is `(132, 72, 101)` in macOS and `(133, 69, 98)`
+in KDE. The selected child sample is `(85, 111, 196)` in both, because the
+patched engine uses that sampled solid blue. The KDE render used the actual
+Folder View actions and its `Create New` submenu; this validates the two
+selection states on the real Plasma menu path, not Finder's action labels.
+
+The current capture is
+`/tmp/tahoe-plasma-menu-glass-u-selection-final-20261105/desktop-context-menu-submenu.png`.
+The paired capture with `liquidglass` unloaded is
+`/tmp/tahoe-plasma-menu-glass-u-selection-final-20261105/desktop-context-menu-submenu-glass-off.png`.
+The isolated test's KWin process loaded the private effect and Plasma mapped
+the patched Kvantum library, recorded in `liquidglass-loaded.txt` and
+`kvantum-patched-loaded.txt`. Pixel comparison reports 9,752 pixels changed by
+more than 8 channel levels in the root-menu crop and 22,826 in the submenu
+crop; the sampled 900 × 900 desktop region outside the panels has no changed
+pixels. This shows the effect is separately visible on each popup surface
+without changing the desktop outside them. It does not by itself prove a
+pixel-perfect match of blur or refraction.
+
+The tested config uses 5 px submenu overlap and a 14 px popup radius. The
+panels meet, but a doubled seam remains visible at their join; their outer
+silhouette is not yet the continuous U-shaped reference. KDE's real action
+labels also make its root and submenu wider/taller than Finder's. Those visual
+gaps remain open; no screenshot is being called a finished match. The private
+session used display `:196`, private D-Bus and private XDG directories and was
+stopped after capture; the active desktop was not changed.

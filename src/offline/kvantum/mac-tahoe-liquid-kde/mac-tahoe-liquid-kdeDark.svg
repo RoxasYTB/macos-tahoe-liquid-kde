@@ -5057,13 +5057,13 @@
   <path
      d="M 159,516 H 201 A 3,3 0 0 1 204,519 V 561 A 3,3 0 0 1 201,564 H 159 A 3,3 0 0 1 156,561 V 519 A 3,3 0 0 1 159,516 Z"
      id="menu-normal"
-     style="opacity:0.34;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#16051d;stroke-width:.75;stroke-opacity:.72" />
+     style="opacity:0.46;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#16051d;stroke-width:.75;stroke-opacity:.72" />
   <g
      transform="matrix(1.499999,0,0,1,-27.38538,-187.75301)"
      id="menu-normal-left">
     <path
        d="m 116.257,703.753 h 6 v 48 h -6 z"
-       style="opacity:0.34;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:0.46;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        id="path9036" />
     <g transform="matrix(0.6666671111,0,0,1,18.25693217,187.75301)">
       <rect x="147" y="515.99999" width=".75" height="48" fill="#000000" opacity=".18" />
@@ -5075,7 +5075,7 @@
      id="menu-normal-topleft"
      style="opacity:1;stroke:none;stroke-width:1">
     <path
-       style="opacity:0.34;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:0.46;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        d="m 122.25573,698.75378 c -3.32289,10e-4 -5.99768,2.6768 -5.99768,6.00001 h 6.00002 z"
        id="path3597" />
     <g transform="matrix(0.6666681333,0,0,0.6666681333,18.2578335,360.753007)">

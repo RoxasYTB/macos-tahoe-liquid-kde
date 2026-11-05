@@ -122,7 +122,7 @@ def build() -> None:
 _CORNER_DEFAULTS = (
     ("WindowCornerRadius", "22"),
     ("DockCornerRadius", "20"),
-    ("PopupCornerRadius", "6"),
+    ("PopupCornerRadius", "14"),
 )
 
 _WINDOW_FILTER_DEFAULTS = (

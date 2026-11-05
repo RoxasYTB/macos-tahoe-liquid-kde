@@ -1,0 +1,39 @@
+--- a/Kvantum/style/Kvantum.cpp
++++ b/Kvantum/style/Kvantum.cpp
+@@ -5782,0 +5783,36 @@
++        const QMenu *menu = qobject_cast<const QMenu*>(widget);
++        bool isSubmenu = false;
++        if (menu != nullptr)
++        {
++          for (QObject *associated : menu->menuAction()->associatedObjects())
++          {
++            if (qobject_cast<const QMenu*>(associated) != nullptr)
++            {
++              isSubmenu = true;
++              break;
++            }
++          }
++        }
++        const bool tahoeChildSelection =
++            isSubmenu
++            && opt->menuItemType != QStyleOptionMenuItem::Separator
++            && opt->menuItemType != QStyleOptionMenuItem::SubMenu
++            && (option->state & State_Selected);
++        if (tahoeChildSelection)
++        {
++          /* macOS uses a blue selection in the child menu while the parent
++             submenu row keeps its quieter hover treatment. */
++          QRect selectionRect = option->rect.adjusted(3, 1, -3, -1);
++          QColor selectionColor(85, 111, 196);
++          QPainterPath selectionPath;
++          selectionPath.addRoundedRect(selectionRect,
++                                       qMin(8.0, selectionRect.height() / 2.0),
++                                       qMin(8.0, selectionRect.height() / 2.0));
++          painter->save();
++          painter->setRenderHint(QPainter::Antialiasing, true);
++          painter->fillPath(selectionPath, selectionColor);
++          painter->restore();
++          /* Let Kvantum draw text, icon and checkmark without adding the
++             shared mauve highlight a second time. */
++          status = KL1("normal");
++        }

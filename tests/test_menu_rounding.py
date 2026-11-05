@@ -49,6 +49,16 @@ def test_native_rounding_preserves_menu_geometry(repo, tmp_path, mode, scale):
     assert after["center_alpha"] > 0
 
 
+@pytest.mark.parametrize("mode", ["", "Dark"])
+def test_submenu_overlap_matches_connected_glass_reference(repo, mode):
+    config = repo / "src/offline/kvantum/mac-tahoe-liquid-kde" / (
+        f"mac-tahoe-liquid-kde{mode}.kvconfig"
+    )
+    general = config.read_text().split("[%General]", 1)[1].split("\n[", 1)[0]
+    values = dict(line.split("=", 1) for line in general.splitlines() if "=" in line)
+    assert values["submenu_overlap"] == "5"
+
+
 def _probe():
     from PyQt6.QtCore import QRect, Qt
     from PyQt6.QtGui import QImage, QPainter, QPixmap, QIcon

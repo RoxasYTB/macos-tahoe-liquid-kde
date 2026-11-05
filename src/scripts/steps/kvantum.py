@@ -169,6 +169,20 @@ def _extract_bundled_engine() -> bool:
         extracted = staging / ENGINE_SOURCE.name
         if not (extracted / "Kvantum/CMakeLists.txt").is_file():
             raise ValueError(tr('Kvantum/CMakeLists.txt missing from archive'))
+        patch_file = offline("kvantum-engine", "tahoe-menu-selection.patch")
+        if not patch_file.is_file():
+            raise ValueError(tr('Kvantum menu-selection patch missing: {value1}', value1=patch_file))
+        patch_result = subprocess.run(
+            ["patch", "--batch", "--forward", "-p1", "-i", str(patch_file)],
+            cwd=extracted,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if patch_result.returncode != 0:
+            raise ValueError(
+                tr('Kvantum menu-selection patch failed ({value1})', value1=patch_result.stderr.strip() or patch_result.stdout.strip())
+            )
         shutil.rmtree(ENGINE_SOURCE, ignore_errors=True)
         extracted.replace(ENGINE_SOURCE)
         return True

@@ -359,7 +359,7 @@ def test_corner_defaults_only_seed_missing_keys(monkeypatch):
     monkeypatch.setattr(acrylic_glass, "run_user", read)
     monkeypatch.setattr(acrylic_glass, "kw_write", lambda *args: writes.append(args) or True)
     acrylic_glass._install_corner_defaults()
-    assert [args[-2:] for args in writes] == [("PopupCornerRadius", "6")]
+    assert [args[-2:] for args in writes] == [("PopupCornerRadius", "14")]
 
 
 def test_corner_defaults_do_not_replace_custom_values(monkeypatch):

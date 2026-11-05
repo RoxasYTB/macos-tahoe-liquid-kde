@@ -50,6 +50,10 @@ def test_bundled_archive_extracts_only_after_digest_check(monkeypatch, tmp_path)
     assert kvantum._extract_bundled_engine() is True
     assert (source / "Kvantum/CMakeLists.txt").is_file()
     assert (source / "Kvantum/COPYING").is_file()
+    patched_style = (source / "Kvantum/style/Kvantum.cpp").read_text()
+    assert "tahoeChildSelection" in patched_style
+    assert "menu->menuAction()->associatedObjects()" in patched_style
+    assert "QColor selectionColor(85, 111, 196)" in patched_style
 
     corrupt = tmp_path / "Kvantum-corrupt.tar.xz"
     corrupt.write_bytes(kvantum.ENGINE_ARCHIVE.read_bytes() + b"corrupt")

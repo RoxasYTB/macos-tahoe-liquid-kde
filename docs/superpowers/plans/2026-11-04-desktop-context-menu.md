@@ -104,6 +104,28 @@
 - It closes the previous reference gap: `Sort By` is hovered, its submenu is open to the right, `Kind` has the vivid blue rounded selection, and `None` has the checkmark. The parent hover uses a lighter, muted mauve fill. The two interaction states therefore need distinct treatments.
 - Source inspection found that the current Kvantum profiles map `MenuItem` frame/interior to the same `menuitem` SVG element, whose nine-patch set exposes one `menuitem-normal` fill. That shared fill explains the current mauve state being reused for parent hover and submenu selection. Do not claim the new state is matched until an isolated native render demonstrates a separate selected-child blue treatment while retaining the light parent hover. Investigate whether Qt/Kvantum exposes a separate selected/focused submenu item hook; if not, record the limitation and implement the smallest scoped native-menu styling extension rather than changing global highlight colors blindly.
 
+#### Full glass submenu parity pass — 2026-11-05
+
+**Acceptance criteria from the latest macOS reference:**
+
+- Parent menu and open submenu read as a connected two-panel glass shape: about 5 px horizontal overlap, no gap or doubled bright seam at the join, rounded external silhouette and a continuous U-like perimeter around both panels.
+- Each popup refracts and lightly blurs its own live backdrop through KWin; verify pixels in both root and child interiors independently with the effect on/off. Do not bake the wallpaper into either popup.
+- Keep the menu's translucent dark-plum/neutral tint and add the same restrained outer edge, upper highlight and shadow treatment used by the theme's glass app surfaces. Do not add a rose tint to the compositor's global material.
+- Parent hover remains muted mauve; an active child selection is macOS blue. If Kvantum cannot distinguish submenu-parent and child states, prototype the smallest native QStyle-based alternative and keep all current KDE actions.
+- Compare at the same logical scale with the supplied 1011 × 730 menu reference; record geometry, source values, on/off evidence and the actual remaining deviations. No active desktop config/restart.
+
+**Immediate scoped implementation:** test `submenu_overlap=5` in both profiles and one paired, isolated root+submenu render. Then tune only the menu SVG tint/edge and popup glass radius/highlight values that the render proves are wrong; do not change the global material or unrelated app styles to compensate for a menu-specific mismatch.
+
+**Progress checkpoint — 2026-11-05:**
+
+- [x] Set and test 5 px submenu overlap in both light and dark Kvantum profiles.
+- [x] Increase the default popup radius to 14 px while preserving existing explicit user values.
+- [x] Tune the Light profile's hovered row to a muted plum/mauve matching the macOS reference; measured center pixels are `(133, 69, 98)` in KDE and `(132, 72, 101)` in macOS.
+- [x] Patch the bundled Kvantum Qt 6 engine narrowly so a selected ordinary item in a submenu uses the macOS blue fill (`#556fc4`), while the hovered submenu-opening row retains its mauve treatment. KDE's native actions and labels are still supplied by Plasma.
+- [x] Build the patched engine and load it only in a private Xorg/KWin/Plasma test. The private process map proves the patched `libkvantum.so` was loaded.
+- [x] Compare effect-on/off captures: both popup regions change, while the sampled desktop region outside them is unchanged. Captures: `/tmp/tahoe-plasma-menu-glass-u-selection-final-20261105/desktop-context-menu-submenu.png` and `desktop-context-menu-submenu-glass-off.png`.
+- [ ] Continue matching the outer perimeter, continuous U-like join, restrained glass edge and refraction; the current render still shows a join seam and KDE's longer action labels produce larger panels than the macOS reference.
+
 ## Source path evidence
 
 - KDE Plasma `FolderView.qml`: https://github.com/KDE/plasma-desktop/blob/master/containments/desktop/package/contents/ui/FolderView.qml

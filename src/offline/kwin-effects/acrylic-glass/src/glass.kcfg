@@ -49,7 +49,7 @@ tahoe-control-center</default>
             <default>20.0</default>
         </entry>
         <entry name="PopupCornerRadius" type="Double">
-            <default>6.0</default>
+            <default>14.0</default>
         </entry>
         <entry name="RoundCornersOfMaximizedWindows" type="Bool">
             <default>false</default>
