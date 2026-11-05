@@ -2,12 +2,47 @@
 +++ b/Kvantum/style/Kvantum.cpp
 @@ -34,0 +35 @@
 +#include <QCursor>
-@@ -5782,0 +5784,38 @@
+@@ -3286,0 +3288,13 @@
++      // Match Aurorae's one-pixel, 12% white application-window edge.
++      if (widget && qobject_cast<const QMenu*>(widget))
++      {
++        const QRectF edge = QRectF(interiorRect(r, fspec)).adjusted(0.5, 0.5, -0.5, -0.5);
++        painter->save();
++        painter->setRenderHint(QPainter::Antialiasing, true);
++        QPen edgePen(QColor(255, 255, 255, 31));
++        edgePen.setWidthF(1.0);
++        painter->setPen(edgePen);
++        painter->setBrush(Qt::NoBrush);
++        painter->drawRoundedRect(edge, 9.5, 9.5);
++        painter->restore();
++      }
+@@ -5782,0 +5797,59 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
++        const auto ownsSubmenu = [menu](const QMenu *candidate) {
++          if (!candidate || candidate == menu || !candidate->isVisible())
++            return false;
++          for (QAction *action : candidate->actions())
++            if (action->menu() == menu)
++              return true;
++          return false;
++        };
 +        const QMenu *parentMenu = menu != nullptr
 +            ? qobject_cast<const QMenu*>(menu->parentWidget())
 +            : nullptr;
-+        const bool isSubmenu = parentMenu != nullptr && parentMenu != menu;
++        if (!ownsSubmenu(parentMenu) && menu != nullptr && menu->menuAction() != nullptr)
++        {
++          parentMenu = nullptr;
++          for (QObject *associated : menu->menuAction()->associatedObjects())
++          {
++            const QMenu *candidate = qobject_cast<const QMenu*>(associated);
++            if (ownsSubmenu(candidate))
++            {
++              parentMenu = candidate;
++              break;
++            }
++          }
++        }
++        const bool isSubmenu = parentMenu != nullptr;
 +        const QRect itemGlobal = menu
 +            ? QRect(menu->mapToGlobal(option->rect.topLeft()), option->rect.size())
 +            : QRect();
@@ -41,7 +76,7 @@
 +        }
 +        if (openSubmenuRow)
 +          status = KL1("normal");
-@@ -5783,0 +5823,21 @@
+@@ -5783,0 +5857,21 @@
 +        const bool tahoeChildSelection =
 +            isSubmenu
 +            && opt->menuItemType != QStyleOptionMenuItem::Separator
@@ -63,7 +98,9 @@
 +          painter->restore();
 +          status = KL1("normal");
 +        }
-@@ -5821,0 +5882,11 @@
+@@ -5819,0 +5914,11 @@
++          }
++
 +          if (openSubmenuRow)
 +          {
 +            const QRect highlightRect = option->rect.adjusted(5, 2, -5, -2);
@@ -73,9 +110,7 @@
 +            painter->setRenderHint(QPainter::Antialiasing, true);
 +            painter->fillPath(highlightPath, QColor(160, 112, 125, 140));
 +            painter->restore();
-+          }
-+
-@@ -6053,2 +6124,18 @@
+@@ -6053,2 +6158,18 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.

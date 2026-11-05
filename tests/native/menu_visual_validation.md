@@ -486,3 +486,31 @@ Capture: `/tmp/tahoe-menu-join-parent-pill-20261105/finder-context/on.png`; side
 - KWin on/off changed 330 parent-menu pixels and 42,606 child-menu pixels above 8 RGB levels; the sampled desktop outside both popups had no changed pixels. This confirms both rendered popup surfaces still receive live glass in this capture.
 - A private-only overlap-22 trial raised Kvantum's parser limit to 32 and moved the child frame to x=1127. It did not remove the separate inner edge and obscured more of the parent row; reject 22 and keep production overlap at Light 14 / Dark 16.
 - The parent-child lookup fix is useful plumbing, but the screenshots still show a small visible separation/doubled edge. Do not call the U-shaped join complete. The next batch should change the join edge treatment itself, not increase overlap again.
+
+
+### 2026-11-05: native submenu ownership and application edge
+
+The Kvantum patch now resolves detached native submenus through the owning
+QAction's associated menus, validating action ownership and visibility. The real
+Plasma Create New submenu now paints pointer selection blue while its open parent
+row remains mauve. The menu edge uses the Aurorae application's one-pixel white
+line at 12% opacity, painted after the interior instead of stretching an SVG stroke.
+
+Private Xorg/DBus capture: `/tmp/tahoe-menu-owned-submenu-glass-only-20261105/`.
+`effects-active.txt` contains only `liquidglass`; process maps prove the rebuilt
+Kvantum and copied glass plugin were loaded. Parent geometry is 320x210 at
+(1000,327), child 201x314 at (1307,331): 13 pixels of window overlap minus
+two four-pixel transparent margins gives five pixels of visible overlap.
+The light/dark profiles use overlap 12/16 to account for their 4/6-pixel margins.
+The dark profile's new geometry has configuration coverage, not a new live capture.
+
+Build: bundled Kvantum 1.1.8 with the regenerated patch, target `kvantum`, succeeds.
+Targeted tests: 11 passed, 3 skipped (`test_menu_rounding.py`,
+`test_popup_rendering.py`); `git diff --check` passes.
+
+This is a checkpoint, not a pixel-identical result. The application edge's white
+line is reused, but the reference's outer dark outline and its full rim response
+still differ. Reference and KDE menus lie over different wallpaper regions, so
+these captures do not establish matching blur/refraction strength. KDE action
+contents, icon colors and resulting panel dimensions differ intentionally.
+No active desktop configuration was changed.
