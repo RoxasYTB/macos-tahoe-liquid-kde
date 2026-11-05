@@ -2,7 +2,7 @@
 +++ b/Kvantum/style/Kvantum.cpp
 @@ -34,0 +35 @@
 +#include <QCursor>
-@@ -5782,0 +5809,38 @@
+@@ -5782,0 +5784,38 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
 +        const QMenu *parentMenu = menu != nullptr
 +            ? qobject_cast<const QMenu*>(menu->parentWidget())
@@ -41,7 +41,7 @@
 +        }
 +        if (openSubmenuRow)
 +          status = KL1("normal");
-@@ -5783,0 +5848,21 @@
+@@ -5783,0 +5823,21 @@
 +        const bool tahoeChildSelection =
 +            isSubmenu
 +            && opt->menuItemType != QStyleOptionMenuItem::Separator
@@ -63,9 +63,7 @@
 +          painter->restore();
 +          status = KL1("normal");
 +        }
-@@ -5819,0 +5905,11 @@
-+          }
-+
+@@ -5821,0 +5882,11 @@
 +          if (openSubmenuRow)
 +          {
 +            const QRect highlightRect = option->rect.adjusted(5, 2, -5, -2);
@@ -74,4 +72,27 @@
 +            painter->save();
 +            painter->setRenderHint(QPainter::Antialiasing, true);
 +            painter->fillPath(highlightPath, QColor(160, 112, 125, 140));
++            painter->restore();
++          }
++
+@@ -6053,2 +6124,18 @@
+-            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
+-                          &o,painter);
++            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
++            const QPointF center = o.rect.center();
++            const qreal direction = rtl ? -1.0 : 1.0;
++            QPainterPath chevron;
++            chevron.moveTo(center.x() - direction * 1.5, center.y() - 3.0);
++            chevron.lineTo(center.x() + direction * 1.5, center.y());
++            chevron.lineTo(center.x() - direction * 1.5, center.y() + 3.0);
++            QPen pen((o.state & State_Enabled) ? QColor(245, 242, 247, 230)
++                                                : QColor(200, 194, 204, 120));
++            pen.setWidthF(1.4);
++            pen.setCapStyle(Qt::RoundCap);
++            pen.setJoinStyle(Qt::RoundJoin);
++            painter->save();
++            painter->setRenderHint(QPainter::Antialiasing, true);
++            painter->setPen(pen);
++            painter->setBrush(Qt::NoBrush);
++            painter->drawPath(chevron);
 +            painter->restore();

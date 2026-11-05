@@ -5057,7 +5057,7 @@
   <path
      d="M 159,516 H 201 A 3,3 0 0 1 204,519 V 561 A 3,3 0 0 1 201,564 H 159 A 3,3 0 0 1 156,561 V 519 A 3,3 0 0 1 159,516 Z"
      id="menu-normal"
-     style="opacity:0.46;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#16051d;stroke-width:.75;stroke-opacity:.72" />
+     style="opacity:0.46;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#ffffff;stroke-width:.15;stroke-opacity:.20" />
   <g
      transform="matrix(1.499999,0,0,1,-27.38538,-187.75301)"
      id="menu-normal-left">
