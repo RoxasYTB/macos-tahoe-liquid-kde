@@ -14,7 +14,7 @@
 - Preserve KDE actions, enablement, separators, submenu contents and keyboard behavior. Style their menu surfaces; do not hardcode the screenshot's Apple-specific action list.
 - Do not edit the Dock task manager's `PlasmaExtras.Menu` in `src/offline/plasmoids/org.kde.mac.tahoe.liquid.taskmanager/contents/ui/ContextMenu.qml` as a substitute for the desktop menu.
 - Do not install into, restart, or change KWin/Plasma configuration on the active desktop. Use private Xvfb/KWin sessions, private HOME/XDG directories and the existing screenshot probes.
-- Preserve existing dirty user changes. In particular, the current uncommitted `[Menu]` frame margins are 13 px in `src/offline/kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kde.kvconfig`; inspect and retain that change when editing the same file.
+- Preserve existing dirty user changes. At the current checkpoint, both checked-in Kvantum profiles use `[Menu] frame.*=0`; an earlier worktree observation recorded 13 px locally, so recheck the actual status and values before any future edit. Do not restore 13 px automatically: the isolated 13 px trial creates an overly wide pale rim.
 - Maintain the existing Kvantum geometry invariants in `AGENTS.md`: `frame.expansion=12` on `MenuItem`, 3 px layout frame and unchanged text margins, row heights, icon sizes and separator geometry. System fonts remain in use.
 - Keep light and dark profiles paired. Do not add the macOS reference screenshot to public artwork or commit generated probe captures.
 - Push a narrowly staged GitHub checkpoint after each validated menu deliverable; no pull request until the full active objective is complete.

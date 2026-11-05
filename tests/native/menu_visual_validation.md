@@ -181,6 +181,30 @@ action labels and the corners are somewhat tighter than the reference.
 --tb=short`: **9 passed, 3 skipped** (PyQt6.QtSvg unavailable). `git diff
 --check` is clean. The active desktop and its color scheme were not changed.
 
+## Isolated outer-rim diagnosis — 2026-11-05
+
+A private Light-profile Plasma render changed only the `menu-normal` center
+path to a 12 px corner radius; all repository assets remained untouched. In
+`/tmp/tahoe-plasma-menu-radius-trial-20261105/desktop-context-menu.png`, the
+center fill develops a pronounced inset arc, while the bright rectangular
+outer perimeter remains unchanged. This rules out the center fill path as the
+source of that perimeter. The experiment was discarded. Further work should
+trace the QMenu frame/rim element independently before changing the theme; do
+not keep increasing `menu-normal` rounding. The current real Plasma menu,
+KDE action list and submenu still work in the isolated render; no active
+desktop settings were changed.
+
+Follow-up isolated source/config comparison found both checked-in Kvantum
+profiles currently use `[Menu] frame.*=0`, despite an older plan note about a
+local 13 px value. Overriding all four margins to 13 in a private Light-profile
+Plasma run restores a clear rounded outer silhouette, but produces an overly
+wide pale rim (`/tmp/tahoe-plasma-menu-margin13-current-20261105/desktop-context-menu.png`).
+A single 3 px variant retains a pale thin frame with tighter corners
+(`/tmp/tahoe-plasma-menu-margin3-current-20261105/desktop-context-menu.png`).
+Neither temporary setting is accepted. The source stays unchanged until the
+frame fill/highlight can be separated from its rounding; correct the stale
+plan note before any future margin edits.
+
 ## Limits and probe corrections
 
 These are toolkit-family and frame checks, not an assertion that every external
