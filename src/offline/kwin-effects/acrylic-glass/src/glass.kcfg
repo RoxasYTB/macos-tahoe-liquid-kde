@@ -97,6 +97,16 @@ tahoe-control-center</default>
             <min>0.0</min>
             <max>1.0</max>
         </entry>
+        <!-- Advanced native-menu material calibration; does not affect applets. -->
+        <entry name="NativeMenuChromaGain" type="Double">
+            <default>1.2601</default><min>0.0</min><max>4.0</max>
+        </entry>
+        <entry name="NativeMenuLumaGain" type="Double">
+            <default>-0.4897</default><min>-4.0</min><max>4.0</max>
+        </entry>
+        <entry name="NativeMenuLift" type="Double">
+            <default>0.05582</default><min>-1.0</min><max>1.0</max>
+        </entry>
         <entry name="GradientTopColor" type="Color">
             <default>#000000</default>
         </entry>

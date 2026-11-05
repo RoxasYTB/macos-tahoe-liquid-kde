@@ -301,6 +301,8 @@ private:
         int highlightStrengthLocation;
         int darkGradientOverlayLocation;
         int materialOpacityLocation;
+        int nativeMenuMaterialLocation;
+        int nativeMenuCurveLocation;
         int centerOpacityLocation;
         int dockSurfaceLocation;
         int backgroundSizeLocation;

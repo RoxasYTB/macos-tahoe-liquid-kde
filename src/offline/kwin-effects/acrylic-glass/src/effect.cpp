@@ -7,6 +7,7 @@
 */
 
 #include "effect.h"
+#include <QVector3D>
 #include "build_identity.h"
 // KConfigSkeleton
 #include "glassconfig.h"
@@ -251,6 +252,8 @@ BlurEffect::BlurEffect()
         m_roundedOnscreenPass.highlightStrengthLocation = m_roundedOnscreenPass.shader->uniformLocation("highlightStrength");
         m_roundedOnscreenPass.darkGradientOverlayLocation = m_roundedOnscreenPass.shader->uniformLocation("darkGradientOverlay");
         m_roundedOnscreenPass.materialOpacityLocation = m_roundedOnscreenPass.shader->uniformLocation("materialOpacity");
+        m_roundedOnscreenPass.nativeMenuMaterialLocation = m_roundedOnscreenPass.shader->uniformLocation("nativeMenuMaterial");
+        m_roundedOnscreenPass.nativeMenuCurveLocation = m_roundedOnscreenPass.shader->uniformLocation("nativeMenuCurve");
         m_roundedOnscreenPass.centerOpacityLocation = m_roundedOnscreenPass.shader->uniformLocation("centerOpacity");
         m_roundedOnscreenPass.dockSurfaceLocation = m_roundedOnscreenPass.shader->uniformLocation("dockSurface");
         m_roundedOnscreenPass.backgroundSizeLocation = m_roundedOnscreenPass.shader->uniformLocation("backgroundSize");
@@ -1793,6 +1796,11 @@ void BlurEffect::blur(
         int(m_darkGradientOverlay && !w->isDock()));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.materialOpacityLocation,
         menuSurface ? m_menuMaterialOpacity : m_materialOpacity);
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.nativeMenuMaterialLocation,
+        int(menuSurface && BlurConfig::materialPreset() == 1));
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.nativeMenuCurveLocation,
+        QVector3D(BlurConfig::nativeMenuChromaGain(), BlurConfig::nativeMenuLumaGain(),
+                  BlurConfig::nativeMenuLift()));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.centerOpacityLocation, centerOpacity);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.dockSurfaceLocation, int(dockSurface));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.backgroundSizeLocation,

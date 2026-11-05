@@ -29,7 +29,7 @@ def test_native_rounding_preserves_menu_geometry(repo, tmp_path, mode, scale):
             "frame.expansion=12", f"frame.expansion={expansion}") + content[end:]
         (theme / f"{profile}.kvconfig").write_text(content)
         (config / "kvantum.kvconfig").write_text(f"[General]\ntheme={profile}\n")
-        env = {k: v for k, v in os.environ.items() if k in ("PATH", "LANG")}
+        env = {k: v for k, v in os.environ.items() if k in ("PATH", "LANG", "QT_PLUGIN_PATH")}
         env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"),
                    QT_QPA_PLATFORM="offscreen", QT_QPA_PLATFORMTHEME="generic",
                    QT_SCALE_FACTOR=scale)
@@ -66,6 +66,85 @@ def test_submenu_overlap_accounts_for_both_transparent_shadow_margins(repo, mode
     )
     assert visible_overlap == 5
 
+
+
+def test_native_menu_style_restores_application_margins(tmp_path):
+    plugin_path = os.environ.get("MTTKDE_TEST_KVANTUM_PLUGIN_PATH")
+    if not plugin_path:
+        pytest.skip("compiled Tahoe Kvantum override required")
+    pytest.importorskip("PyQt6.QtWidgets")
+    env = {key: value for key, value in os.environ.items() if key in ("PATH", "LANG")}
+    env.update(HOME=str(tmp_path), XDG_CONFIG_HOME=str(tmp_path / "config"),
+               QT_QPA_PLATFORM="offscreen", QT_QPA_PLATFORMTHEME="generic",
+               QT_PLUGIN_PATH=plugin_path)
+    result = subprocess.run([sys.executable, __file__, "--margins-probe"], env=env,
+                            capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _margins_probe():
+    from PyQt6.QtCore import QMargins
+    from PyQt6.QtWidgets import QApplication, QMenu
+    app = QApplication([])
+    app.setStyle("fusion")
+    root = QMenu()
+    root.setContentsMargins(3, 4, 5, 6)
+    child = root.addMenu("Child")
+    child.setContentsMargins(1, 2, 3, 4)
+    child.addAction("Item")
+    menus = (root, child)
+    originals = tuple(QMargins(menu.contentsMargins()) for menu in menus)
+    app.setStyle("kvantum")
+    for menu in menus:
+        menu.ensurePolished()
+    applied = tuple(QMargins(menu.contentsMargins()) for menu in menus)
+    assert applied != originals, "The compiled native menu style was not exercised"
+    _check_native_selection_states(root, child, app)
+    app.setStyle("fusion")
+    assert tuple(menu.contentsMargins() for menu in menus) == originals
+    app.setStyle("kvantum")
+    for menu in menus:
+        menu.ensurePolished()
+    assert tuple(menu.contentsMargins() for menu in menus) == applied
+    app.setStyle("fusion")
+    assert tuple(menu.contentsMargins() for menu in menus) == originals
+
+
+def _check_native_selection_states(root, child, app):
+    from PyQt6.QtCore import QPoint, QRect
+    from PyQt6.QtGui import QColor, QCursor, QImage, QPainter
+    from PyQt6.QtWidgets import QStyle, QStyleOptionMenuItem
+    root.show()
+    child.setFixedSize(180, 80)
+    child.show()
+    app.processEvents()
+    option = QStyleOptionMenuItem()
+    option.initFrom(child)
+    option.menuItemType = QStyleOptionMenuItem.MenuItemType.Normal
+    option.rect = QRect(0, 0, 160, 24)
+    option.text = ""
+    pointer = child.mapToGlobal(QPoint(80, 12))
+    QCursor.setPos(pointer)
+    assert QCursor.pos() == pointer
+
+    def center(state):
+        option.state = state
+        image = QImage(160, 24, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(QColor(0, 0, 0, 0))
+        painter = QPainter(image)
+        child.style().drawControl(QStyle.ControlElement.CE_MenuItem, option, painter, child)
+        painter.end()
+        return image.pixelColor(80, 12)
+
+    enabled = QStyle.StateFlag.State_Enabled
+    selected = QStyle.StateFlag.State_Selected
+    # Keyboard selection must not leave the old pointer row highlighted.
+    assert center(enabled).alpha() == 0
+    # Disabled actions must remain visually disabled even if marked selected.
+    assert center(selected).alpha() == 0
+    assert center(enabled | selected).alpha() > 0
+    child.hide()
+    root.hide()
 
 
 def _probe():
@@ -106,4 +185,7 @@ def _probe():
 
 
 if __name__ == "__main__":
-    _probe()
+    if "--margins-probe" in sys.argv:
+        _margins_probe()
+    else:
+        _probe()

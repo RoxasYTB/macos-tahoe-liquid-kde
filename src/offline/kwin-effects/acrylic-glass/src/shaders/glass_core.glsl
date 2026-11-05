@@ -24,6 +24,8 @@ uniform float refractionWidth;
 uniform float highlightWidth;
 uniform float highlightStrength;
 uniform float materialOpacity;
+uniform bool nativeMenuMaterial;
+uniform vec3 nativeMenuCurve;
 uniform float centerOpacity;
 uniform bool dockSurface;
 uniform vec2 backgroundSize;
@@ -120,5 +122,16 @@ void main()
     float coverage = inConnectedMenuJoin
         ? 1.0
         : materialOpacity * (dockSurface ? mix(centerOpacity, 1.0, edgeQ) : 1.0);
+    if (nativeMenuMaterial && coverage > 0.0) {
+        // Resolve coverage against the live, unwarped background before the
+        // neutral vibrancy curve. Qt paints its black veil over this result.
+        // Equal RGB inputs remain equal: no fixed purple material color.
+        vec3 backing = LG_SAMPLE(sharpTex, clamp(uv, 0.0, 1.0)).rgb;
+        vec3 material = mix(backing, surface.rgb, coverage);
+        float luminance = dot(material, vec3(0.2126, 0.7152, 0.0722));
+        surface.rgb = clamp(nativeMenuCurve.x * material + nativeMenuCurve.y * luminance
+                            + vec3(nativeMenuCurve.z), 0.0, 1.0);
+        coverage = 1.0;
+    }
     LG_OUT = surface * (mask * opacity * coverage);
 }

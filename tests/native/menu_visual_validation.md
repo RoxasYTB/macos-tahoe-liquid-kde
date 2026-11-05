@@ -564,3 +564,70 @@ reapplication exactly reproduces both compiled Kvantum source files. Targeted
 menu, popup, surface and glass-config checks: 31 passed, 28 skipped. The skipped
 render checks require unavailable optional QtSvg bindings. Actual X11 screenshots
 are reviewed separately. No active session settings were modified.
+
+
+### 2026-11-05: calibrated native material, checked actions and full row geometry
+
+The Tahoe native-menu shader resolves material coverage against the existing
+live sharp texture before an achromatic vibrancy curve. Advanced KConfig defaults:
+`NativeMenuChromaGain=1.2601`, `NativeMenuLumaGain=-0.4897`,
+`NativeMenuLift=0.05582`. Luminance uses (0.2126,0.7152,0.0722), and all three
+channels receive the same scalar operations: neutral backing remains neutral.
+The operation reuses sharpTex in the compositor shader. No colored overlay or
+wallpaper image is used. Only menu roles with MaterialPreset 1 enter this path;
+other windows, applets and the Control Center's Qt.Tool retain their prior path.
+
+Calibration used nine bounded variants, then 27 and an empirical renderer-response
+fit. Repeating an identical configuration before/after candidates produced zero
+maximum pixel difference in the menu crop. The final default render has RGB MAE
+2.93167 over 20,948 masked material pixels, versus 11.96023 before calibration
+(75.5% reduction). Channel MAEs: (3.59643,1.16059,4.03800). Text, selections,
+separators and borders are excluded: this is not whole-interface pixel identity.
+
+`tests/native/menu_material_calibration.py` is a manual NumPy/Pillow scoring and
+response-fitting tool. It reads external reference/baseline paths and a directory
+of captures with a headerless TSV manifest (name/chroma/luma/lift). The reference
+image stays outside this repository. Arguments: `--reference <reference.png>
+--baseline <baseline.png> --captures <variants> --output <report.json>`.
+
+Native layout, paint and polish share QAction ownership lookup, including detached
+submenus before show. Root icon/text columns gain nine leading pixels. Checked
+native actions paint a plain tick and reserve a shared 16-pixel check column;
+exclusive/non-exclusive action behavior is unchanged. Native separators are
+one-pixel white lines at 40/255 alpha, inset 18/16 in roots and 16/16 in children,
+mirrored for RTL. Combo/QML paths keep their prior drawing.
+
+Qt clips each action's paint to its rectangle, so translating selection paint
+cropped the bottom. The fix uses actual contents margins: +2 top for both roles,
++1 bottom for roots. Glyph paint compensates vertically. Original application
+margins are saved and restored on unpolish. A compiled-engine regression exercises
+custom root/child margins through Fusion -> Kvantum -> Fusion twice, verifying
+exact restoration and no accumulation. See the [Qt QMenu layout and paint loops](https://github.com/qt/qtbase/blob/6.8/src/widgets/widgets/qmenu.cpp).
+The rendering probe now forwards QT_PLUGIN_PATH; the restoration test requires
+MTTKDE_TEST_KVANTUM_PLUGIN_PATH to avoid silently testing a stock system engine.
+
+Final private X11 evidence: `/tmp/tahoe-menu-native-final-proof-20261105/`.
+Visible fixture surfaces are 207x201 at (330,161) and 151x272 at (532,303), matching
+the reference; overlap is five pixels. Both reference and KDE blue fields occupy
+y=402..426. Rounding is six pixels. The fixture uses a real checked QAction.
+
+The same session opens the real Plasma Create New menu and its native submenu
+(`real-plasma-menu.png`). A separate non-focusing foreground window changes from
+blue to gray underneath: 27,833 parent and 27,671 child sampled pixels change above
+eight RGB levels. Both gray surfaces have zero median chroma and 95th-percentile
+chroma at most one level. Geometry, loaded plugin maps, private display/config
+and sole active liquidglass effect are recorded alongside. There are no explicit
+NativeMenu overrides in that configuration: these are compiled defaults.
+
+Bundled Kvantum and the X11 effect build successfully. Archive-plus-patch
+reapplication reproduces all three compiled Kvantum files exactly. Final compiled
+engine/menu/surface/config checks: 32 passed, 28 skipped. Material/config/layout
+preset checks: 39 passed, one skipped. Binding/SDK skips are not rendered evidence;
+the actual X11 captures are reviewed separately. No active desktop was restarted
+or reconfigured, and no pull request was opened.
+
+The final regression also checks that an unselected row under the cursor is not
+painted after keyboard selection moves elsewhere, and that disabled rows never
+receive a selection fill. The preceding binary fails this negative control at
+the old-pointer-row assertion; the final compiled binary passes. Unpolish clears
+the cached menu surface as well as restoring application-owned contents margins.
