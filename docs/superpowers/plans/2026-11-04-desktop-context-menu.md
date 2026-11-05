@@ -98,9 +98,11 @@
 - [x] Run the targeted menu tests and `git diff --check`.
 - [x] Stage only the four Kvantum files and validation/plan documentation; commit and push a checkpoint without creating a pull request. Checkpoint: `42d113f8e584a5ecb0439395f9caeca66503e0fb1`.
 
-#### Reference gap still open — 2026-11-05
+#### Hovered parent and selected submenu reference — 2026-11-05
 
-The supplied `image2.png` is sufficient for the resting context menu and shows submenu chevrons, but it does not show a hovered row or an opened submenu. I asked Yohan for an optional macOS capture of `Sort By` hovered with its submenu open; continue against the existing reference while waiting. KDE's actual submenu behavior is verified, but its visual comparison to macOS in those two states remains unqualified until that reference is available.
+- New macOS screenshot: `/tmp/user/1000/codex-clipboard-b6ee3bf3-3a70-40d8-8879-ec9939570f02.png`, 1011 × 730, SHA-256 `caeb1b422e7735af763d053e588533934262f7fffadc287c6a9034dab04139e8`. The reference map in the Control Center repository now records it.
+- It closes the previous reference gap: `Sort By` is hovered, its submenu is open to the right, `Kind` has the vivid blue rounded selection, and `None` has the checkmark. The parent hover uses a lighter, muted mauve fill. The two interaction states therefore need distinct treatments.
+- Source inspection found that the current Kvantum profiles map `MenuItem` frame/interior to the same `menuitem` SVG element, whose nine-patch set exposes one `menuitem-normal` fill. That shared fill explains the current mauve state being reused for parent hover and submenu selection. Do not claim the new state is matched until an isolated native render demonstrates a separate selected-child blue treatment while retaining the light parent hover. Investigate whether Qt/Kvantum exposes a separate selected/focused submenu item hook; if not, record the limitation and implement the smallest scoped native-menu styling extension rather than changing global highlight colors blindly.
 
 ## Source path evidence
 
