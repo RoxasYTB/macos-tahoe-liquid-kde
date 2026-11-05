@@ -183,6 +183,24 @@ Use these sources to choose implementation mechanisms before visual tuning:
 
 Batch direction: keep current native `QMenu` actions; test only the documented paint/layout levers (`spread_menuitems`, panel/item SVG frames and shadow hints) as one small A/B matrix, with the KWin glass effect independently toggled. Preserve live backdrop capture. Do not infer exact blur, tint, or border values from HIG prose; use the supplied Tahoe reference for those values.
 
+### Upstream menu implementation research — 2026-11-05
+
+Research before further visual tuning confirms that there is no public Apple document specifying Tahoe's exact context-menu radius, opacity, blur kernel, or refraction values. Apple's HIG is useful for interaction semantics: submenus are indicated with a trailing chevron; checked items communicate the current choice; menus should remain shallow and scannable. Apple design guidance therefore informs behavior, while the supplied screenshot remains the source for pixel appearance.
+
+The closest reusable KDE starting point is the public `vinceliuice/MacTahoe-kde` Kvantum theme. Its paired light/dark configs use separate `menu` and `menuitem` SVG elements, a 9 px menu frame, menu shadow and blur settings, and standard Qt menu actions. The light config sets `spread_menuitems=false` and `submenu_overlap=0`. These are conventional separated menu frames, not Tahoe's connected parent/submenu contour; importing the values wholesale would preserve a gap and contradict the reference. Its menu/shadow SVG structure and paired profiles are useful examples to inspect, but the current local theme already has a more advanced live KWin material path.
+
+Kvantum's upstream documentation makes the tunable boundaries explicit: `spread_menuitems` extends row painting across the side frame but excludes the shadow; `submenu_overlap` moves the child menu by at most 16 px; `menu_blur_radius` only softens the rounded blur mask. The isolated composite A/B recorded below shows `spread_menuitems=true` overshoots the reference seam, so keep it false. Continue with a narrow paired render that changes only the submenu overlap and shared edge artwork. Use Kvantum's `menu-shadow-hint-*` regions to keep shadow-only pixels out of the material blur mask; keep the two actual popup surfaces sampling the live scene through KWin.
+
+The other useful implementation reference, XMacTahoe, explicitly separates conventional compositor blur from its optional Glass KWin effect, which replaces blur with live edge refraction and is more GPU/version sensitive. This supports retaining the existing Liquid Glass effect for the live sample and keeping its values independent from Kvantum's panel/row SVG. The upstream `MacTahoe-kde` recommendation to use `kwin-effects-forceblur` is not suitable here: it adds a second blur path and risks the exact double-blur interaction already reported by the user.
+
+**Implementation decisions from this research:**
+
+- Keep Plasma's actual context-menu actions and the current KWin live-backdrop path.
+- Reuse the upstream theme's light/dark menu asset organization and shadow-hint concept; do not copy its separated 9 px frame/0 px overlap geometry.
+- Keep the measured child hover blue, keyboard/current selection gray, and parent submenu hover muted mauve as three distinct visual states.
+- Batch the next iteration as a single real-Plasma A/B pair: overlap plus connected edge only, with blur/refraction held constant. Accept or revert the pair before touching radius, fill or optical strength.
+- Treat Liquid Glass and legacy Acrylic/force-blur as mutually exclusive on these menu surfaces so no static or second blur layer obscures the live refracted scene.
+
 ### `spread_menuitems` X11 composite A/B — 2026-11-05
 
 - Rendered the Finder-shaped root and child `QMenu` in private Xvfb + KWin X11 sessions over the bundled Tahoe wallpaper, with the patched Kvantum Qt 6 plugin and the Liquid Glass module mapped into their respective processes. No active desktop session or source profile was changed.
