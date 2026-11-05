@@ -1711,6 +1711,41 @@ void BlurEffect::blur(
     if (menuSurface && data.xScale() == 1.0 && data.yScale() == 1.0
         && data.xTranslation() == 0.0 && data.yTranslation() == 0.0) {
         EffectWindow *parentMenu = w->transientFor();
+        const auto isMenuWindow = [](const EffectWindow *candidate) {
+            return candidate && (candidate->isMenu() || candidate->isDropdownMenu() || candidate->isPopupMenu());
+        };
+        if (!isMenuWindow(parentMenu)) {
+            // Qt's X11 QMenu submenus don't always expose a transient parent to KWin.
+            // Pair only a preceding, same-application popup whose frame geometrically
+            // overlaps this menu at the edge where a submenu would attach.
+            parentMenu = nullptr;
+            const QList<EffectWindow *> stackingOrder = effects->stackingOrder();
+            const int childStackIndex = stackingOrder.indexOf(w);
+            const QRectF childFrame = w->frameGeometry();
+            const QString childClass = w->window()->resourceClass();
+            qreal bestScore = -1.0;
+            for (int i = 0; i < childStackIndex; ++i) {
+                EffectWindow *candidate = stackingOrder.at(i);
+                if (!isMenuWindow(candidate) || candidate->window()->resourceClass() != childClass) {
+                    continue;
+                }
+                const QRectF candidateFrame = candidate->frameGeometry();
+                const QRectF overlap = childFrame.intersected(candidateFrame);
+                const bool opensRight = childFrame.center().x() >= candidateFrame.center().x();
+                const qreal edgeGap = opensRight
+                    ? childFrame.left() - candidateFrame.right()
+                    : candidateFrame.left() - childFrame.right();
+                if (overlap.width() <= 1.0 || overlap.width() > 32.0
+                    || overlap.height() < 12.0 || std::abs(edgeGap) > 24.0) {
+                    continue;
+                }
+                const qreal score = overlap.height() - std::abs(edgeGap) * 0.5;
+                if (score > bestScore) {
+                    bestScore = score;
+                    parentMenu = candidate;
+                }
+            }
+        }
         if (parentMenu && (parentMenu->isMenu() || parentMenu->isDropdownMenu() || parentMenu->isPopupMenu())) {
             const QRectF childFrame = w->frameGeometry();
             const QRectF parentFrame = parentMenu->frameGeometry();

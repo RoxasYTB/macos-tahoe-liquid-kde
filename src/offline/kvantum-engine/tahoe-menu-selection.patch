@@ -2,27 +2,6 @@
 +++ b/Kvantum/style/Kvantum.cpp
 @@ -34,0 +35 @@
 +#include <QCursor>
-@@ -3199,0 +3201,18 @@
-+      /* Leave the real overlapping strip transparent so the parent surface
-+         and the compositor's single shared rim remain visible. */
-+      QRegion panelClip(option->rect);
-+      const QMenu *menu = qobject_cast<const QMenu*>(widget);
-+      const QMenu *parentMenu = menu != nullptr
-+          ? qobject_cast<const QMenu*>(menu->parentWidget())
-+          : nullptr;
-+      if (menu != nullptr && parentMenu != nullptr && parentMenu != menu)
-+      {
-+        const QRect parentGlobal(parentMenu->mapToGlobal(QPoint(0, 0)), parentMenu->size());
-+        const QRect childGlobal(menu->mapToGlobal(QPoint(0, 0)), menu->size());
-+        const QRect shared = parentGlobal.intersected(childGlobal);
-+        if (shared.width() > 1 && shared.height() > 1)
-+          panelClip -= QRegion(shared.translated(-childGlobal.topLeft()));
-+      }
-+      painter->save();
-+      painter->setClipRegion(panelClip, Qt::IntersectClip);
-+
-@@ -3286,0 +3312 @@
-+      painter->restore();
 @@ -5782,0 +5809,38 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
 +        const QMenu *parentMenu = menu != nullptr

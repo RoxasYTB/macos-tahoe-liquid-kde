@@ -44,16 +44,16 @@ void main(void)
     if (mask <= 0.0) {
         discard;
     }
-    if (lgInsideConnectedMenuJoin(pos, halfSize, connectedMenuJoin)) {
-        discard;
-    }
+    bool inConnectedMenuJoin = lgInsideConnectedMenuJoin(pos, halfSize, connectedMenuJoin);
 
     vec2 outNorm = lgRoundedRectNormal(pos, halfSize, cornerRadius, cornerSquircle);
     float inside = max(-d, 0.0);
     float materialPresence = sqrt(clamp(opacity, 0.0, 1.0));
-    float lensStrength = magnifyGlassStrength * materialPresence;
-    float driftStrength = rgbDriftStrength * materialPresence;
-    float reflectionStrength = highlightStrength * materialPresence;
+    // The parent/child overlap is an interior part of one shared glass shape:
+    // retain its material fill, but don't draw a second inner lens or rim there.
+    float lensStrength = inConnectedMenuJoin ? 0.0 : magnifyGlassStrength * materialPresence;
+    float driftStrength = inConnectedMenuJoin ? 0.0 : rgbDriftStrength * materialPresence;
+    float reflectionStrength = inConnectedMenuJoin ? 0.0 : highlightStrength * materialPresence;
 
     float refrBand = max(refractionWidth * (dockSurface ? 1.25 : 1.0), 1.0);
     float edgeT = smoothstep(-refrBand, 0.0, d);
@@ -116,6 +116,8 @@ void main(void)
     }
     // Only the Dock reveals sharp backdrop through its centre. Applet popups
     // need full blur coverage behind their thin client fills.
-    float coverage = materialOpacity * (dockSurface ? mix(centerOpacity, 1.0, edgeQ) : 1.0);
+    float coverage = inConnectedMenuJoin
+        ? 1.0
+        : materialOpacity * (dockSurface ? mix(centerOpacity, 1.0, edgeQ) : 1.0);
     LG_OUT = surface * (mask * opacity * coverage);
 }
