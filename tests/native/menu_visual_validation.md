@@ -130,6 +130,35 @@ discarded and the source configs retain `interior.element=menu`. A replacement
 needs a rounded interior surface that still passes the native text contrast
 check.
 
+## Rounded menu surface follow-up — 2026-11-05
+
+The earlier 0 px margin experiment above used the then-square inner patch and
+did lose the rounded outer edge. The later paired change rounded the SVG
+`menu-normal` patch in both profiles and then set `[Menu]` frame margins to 0;
+that combination was captured through the real desktop containment menu and
+removed the visible inset card. Source checkpoint: `e3ae64a`.
+
+Fresh private Xorg/KWin captures after that source change:
+
+| Profile | Rest | Hover | Submenu | Glass-off comparison |
+| --- | --- | --- | --- | --- |
+| Dark | `/tmp/tahoe-plasma-menu-source-final-20261105/desktop-context-menu.png` | `.../desktop-context-menu-hover.png` | `.../desktop-context-menu-submenu.png` | `.../desktop-context-menu-glass-off.png` |
+| Light | `/tmp/tahoe-plasma-menu-light-source-20261105/desktop-context-menu.png` | `.../desktop-context-menu-hover.png` | `.../desktop-context-menu-submenu.png` | `.../desktop-context-menu-glass-off.png` |
+
+Both runs use the installed desktop Folder View action path, private HOME/XDG
+and D-Bus, and the private KWin X11 display. KWin's active-effect list includes
+`liquidglass` and `kwin4_effect_shapecorners`; its process map points to the
+private effect copy and Plasma's map contains `libkvantum.so`. The light capture
+also includes `desktop-context-menu-keyboard-focus.png`; it demonstrates a
+keyboard selection state but does not verify the full keyboard traversal.
+The dark root surface is close to the reference's floating plum glass. The
+light profile remains visibly too pale and its corner treatment reads tighter
+than the reference. KDE's native labels and available actions remain intact;
+they do not match Finder's wording. A targeted black-purple fill/white-text
+experiment was discarded because the native Qt contrast check failed; source
+files remain at checkpoint `e3ae64a`. No active Plasma/KWin session was
+changed.
+
 ## Limits and probe corrections
 
 These are toolkit-family and frame checks, not an assertion that every external
