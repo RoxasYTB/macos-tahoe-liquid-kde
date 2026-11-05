@@ -366,3 +366,20 @@ Liquid Glass edge/shadow transition to refine. Screenshots and process logs
 from this capped-value diagnostic are under
 `/tmp/tahoe-plasma-native-overlap19-20261105/`; the reference remains in the
 separate Control Center repository.
+
+### Popup rim highlight calibration — 2026-11-05
+
+The popup rim was already enabled in the earlier private captures: an empty
+`WindowBorderClasses` list with `WindowBorderMatching=false` means “all windows
+except listed ones,” so the `plasmashell` popups receive the rim. Switching
+the filter to an explicit `plasmashell` match produced pixel-identical popup
+captures. The edge-strength A/B then held geometry and material constant.
+Raising `HighlightStrength` from 0.14 to 0.28 changed only 528 pixels above 8
+RGB levels in the menu crop (maximum channel delta 13); raising it to 0.60
+created a brighter magenta halo around both panels. That halo diverges from the
+reference's restrained, uneven lavender rim and conflicts with the no-rose
+material requirement. No effect defaults or production SVGs were changed.
+The next edge pass should shape the menu's SVG rim and its directional
+highlight together instead of raising the global reflection strength.
+Comparison crops are `/tmp/tahoe-menu-rim-reference-compare.png` and
+`/tmp/tahoe-menu-highlight-14-60.png`.
