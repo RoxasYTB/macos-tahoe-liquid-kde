@@ -631,3 +631,26 @@ painted after keyboard selection moves elsewhere, and that disabled rows never
 receive a selection fill. The preceding binary fails this negative control at
 the old-pointer-row assertion; the final compiled binary passes. Unpolish clears
 the cached menu surface as well as restoring application-owned contents margins.
+
+### 2026-11-05: lateral contour registration
+
+The black outer stroke previously extended into the lateral shadow margin.
+Inset the pair horizontally by one logical pixel, preserving its existing
+vertical placement, radii and Aurorae-derived black/white alpha (31/255).
+A symmetric inset was rejected because it worsened the upper edge. The
+archive-plus-patch source exactly matches the rebuilt Kvantum source.
+
+Private X11 evidence: `/tmp/tahoe-menu-native-edge-x-20261105/`. Relative to
+`native-final-proof`, RGB MAE in narrow, text-free contour strips falls from
+32.7072 to 25.2056 on the parent left and 33.5820 to 24.8986 on the child right.
+The upper strips remain identical (34.7275 parent, 33.2056 child). These are
+local edge measurements, not whole-menu fidelity scores. Both real Plasma
+menus and changing live foreground captures were retained in the same session.
+Compiled-engine targeted checks: 32 passed, 28 skipped.
+
+Remaining visible differences include weaker contour contrast, the optical
+rim/backing detail, and text raster/baseline differences. The reference-labelled
+Qt fixture uses locally hand-drawn test pictograms, not the actual KDE icon
+pack: their mismatch must not be attributed to the installed icon theme. The
+real Plasma captures remain authoritative for native actions and their icons.
+No active desktop settings were changed.

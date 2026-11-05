@@ -43,7 +43,7 @@
 +          if (menu->property("_kvantum_menu_surface").toRect() != menuSurface)
 +            menu->setProperty("_kvantum_menu_surface", menuSurface);
 +        }
-+        const QRectF edge = QRectF(menuSurface).adjusted(0.5, 0.5, -0.5, -0.5);
++        const QRectF edge = QRectF(menuSurface).adjusted(1.5, 0.5, -1.5, -0.5);
 +        painter->save();
 +        painter->setRenderHint(QPainter::Antialiasing, true);
 +        QPen edgePen(QColor(0, 0, 0, 31));
