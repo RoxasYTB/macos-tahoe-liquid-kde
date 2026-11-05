@@ -313,8 +313,8 @@ the child shifts 5 px left and overlaps the root. The calibrated Dark value is
 `/tmp/tahoe-plasma-menu-overlap9-20261105/desktop-context-menu-submenu.png`
 and `/tmp/tahoe-plasma-menu-overlap14-20261105/desktop-context-menu-submenu.png`;
 the join crop sheet is `/tmp/tahoe-menu-join-calibration.png`. The current
-14/16 values satisfy the measured horizontal overlap, but a doubled edge is
-still visible at the join and the outer silhouette is not yet a continuous U.
+14/16 values satisfy the measured horizontal overlap, but the outer silhouette
+is not yet a continuous U.
 KDE's real action labels also make its panels wider/taller than Finder's. The
 private sessions used display `:196`, private D-Bus and XDG directories and
 were stopped after capture; the active desktop was not changed.
@@ -337,3 +337,32 @@ unit coverage, but a full Plasma login with the overlay installed has not yet
 been run on Rebecca. No environment file or plugin was installed on the active
 host; the blue-child change will take effect after installation and the next
 login.
+
+### Finder reference geometry probe — 2026-11-05
+
+`tests/menu_visual_probe.py --client finder-context` adds a deterministic
+visual twin of the supplied Finder context-menu crop. It reproduces the parent
+and child labels, mauve parent hover, blue `Kind` selection and checkmark, but
+it does not replace or alter Plasma's actual QAction menu; that remains covered
+by the `context` case. At the checked-in Light overlap value 14, the private
+render reported root QMenu geometry `[934, 198, 216, 210]` and child geometry
+`[1135, 339, 162, 288]`. After shadow insets, their visible placement closely
+matches the macOS crop. Existing pixel samples put the parent hover at
+`(132, 71, 102)` on macOS and `(133, 69, 98)` in KDE, with the child selection
+at `(85, 111, 196)` in both.
+
+The fixture was rendered with the private KWin `liquidglass` effect active.
+The paired on/off screenshots changed 1,101 pixels in the root and 5,960 in
+the child by more than 8 RGB levels, with no changed pixels outside the popup
+surfaces. This confirms both menu surfaces are processed by the live effect;
+it does not certify a pixel-perfect match of the material.
+
+An attempted Light `submenu_overlap=19` was clamped to 16 by Kvantum 1.1.8's
+`qMin(qMax(value, 0), 16)` parser; its measured child x coordinate was 1133,
+the same as the value-16 trial. The production values therefore remain 14/16,
+which the earlier A/B calibrated to a 5 px visible join. No engine-limit patch
+was kept. The 16 trial shows a slightly tighter join but still leaves the
+Liquid Glass edge/shadow transition to refine. Screenshots and process logs
+from this capped-value diagnostic are under
+`/tmp/tahoe-plasma-native-overlap19-20261105/`; the reference remains in the
+separate Control Center repository.

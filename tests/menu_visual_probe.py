@@ -28,6 +28,7 @@ CASES = (
     "menu",
     "context",
     "submenu",
+    "finder-context",
     "combo",
     "tooltip",
     "dialog",
@@ -41,7 +42,16 @@ CASES = (
 
 def qt_client(case, output):
     from PyQt6.QtCore import QPoint, QTimer, Qt
-    from PyQt6.QtGui import QAction, QColor, QPainter, QPalette, QCursor
+    from PyQt6.QtGui import (
+        QAction,
+        QColor,
+        QCursor,
+        QIcon,
+        QPainter,
+        QPalette,
+        QPen,
+        QPixmap,
+    )
     from PyQt6.QtWidgets import (
         QApplication,
         QMainWindow,
@@ -55,7 +65,7 @@ def qt_client(case, output):
         QDialog,
     )
 
-    if case == "context":
+    if case in ("context", "finder-context"):
         # Qt/XWayland derives WM_CLASS from argv[0], not only the desktop file
         # name. Match plasmashell so KWin applies the production class filter.
         sys.argv[0] = "plasmashell"
@@ -73,7 +83,9 @@ def qt_client(case, output):
     # The desktop Folder View menu is owned by plasmashell. Give the
     # deterministic context-menu case the same KWin resource class so the
     # production WindowClasses filter and Plasma-popup handling are exercised.
-    app.setDesktopFileName("plasmashell" if case == "context" else "mttkde-popup-probe")
+    app.setDesktopFileName(
+        "plasmashell" if case in ("context", "finder-context") else "mttkde-popup-probe"
+    )
     if case == "background":
 
         class Background(QWidget):
@@ -176,19 +188,104 @@ PlasmaCore.Dialog {
     window.setCentralWidget(body)
     window.resize(480, 320)
     window.show()
-    menu = QMenu(window)
-    menu.addAction("Open", lambda: None).setShortcut("Ctrl+O")
-    menu.addAction("Open Recent")
-    sub = menu.addMenu("More Actions")
-    sub.addActions(
-        [QAction(t, sub) for t in ("Duplicate", "Move to Trash", "Properties")]
-    )
-    menu.addSeparator()
-    checked = menu.addAction("Show hidden files")
-    checked.setCheckable(True)
-    checked.setChecked(True)
-    menu.addAction("Unavailable action").setEnabled(False)
-    menu.addAction("Properties").setShortcut("Alt+Return")
+    menu = QMenu(None if case == "finder-context" else window)
+    if case == "finder-context":
+        # A repeatable visual twin of the supplied Finder screenshot. Keep the
+        # actual Plasma desktop context-menu capture in the separate
+        # ``context`` case; this fixture fixes labels and submenu placement so
+        # the glass surfaces can be compared at the same logical geometry.
+        def line_icon(kind):
+            pix = QPixmap(18, 18)
+            pix.fill(Qt.GlobalColor.transparent)
+            p = QPainter(pix)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setPen(
+                QPen(
+                    QColor("#dfd2e3"),
+                    1.25,
+                    Qt.PenStyle.SolidLine,
+                    Qt.PenCapStyle.RoundCap,
+                    Qt.PenJoinStyle.RoundJoin,
+                )
+            )
+            if kind == "folder":
+                p.drawPolyline(
+                    [
+                        QPoint(2, 5),
+                        QPoint(7, 5),
+                        QPoint(9, 7),
+                        QPoint(16, 7),
+                        QPoint(16, 14),
+                        QPoint(2, 14),
+                        QPoint(2, 5),
+                    ]
+                )
+            elif kind == "info":
+                p.drawEllipse(3, 3, 12, 12)
+                p.drawPoint(9, 7)
+                p.drawLine(9, 9, 9, 12)
+            elif kind == "stacks":
+                for x in (4, 8, 12):
+                    for y in (4, 8, 12):
+                        p.drawRect(x, y, 1, 1)
+            elif kind == "sort":
+                p.drawLine(6, 3, 6, 14)
+                p.drawLine(4, 5, 6, 3)
+                p.drawLine(8, 5, 6, 3)
+                p.drawLine(12, 4, 12, 15)
+                p.drawLine(10, 13, 12, 15)
+                p.drawLine(14, 13, 12, 15)
+            elif kind == "gear":
+                p.drawEllipse(5, 5, 8, 8)
+                p.drawEllipse(8, 8, 2, 2)
+                for x1, y1, x2, y2 in (
+                    (9, 2, 9, 5), (9, 13, 9, 16), (2, 9, 5, 9),
+                    (13, 9, 16, 9), (4, 4, 6, 6), (12, 12, 14, 14),
+                    (12, 6, 14, 4), (4, 14, 6, 12),
+                ):
+                    p.drawLine(x1, y1, x2, y2)
+            p.end()
+            return QIcon(pix)
+
+        menu.setMinimumWidth(216)
+        menu.addAction(line_icon("folder"), "New Folder")
+        menu.addSeparator()
+        menu.addAction(line_icon("info"), "Get Info")
+        menu.addAction("Change Wallpaper…")
+        menu.addAction("Edit Widgets…")
+        menu.addSeparator()
+        menu.addAction(line_icon("stacks"), "Use Stacks")
+        sub = menu.addMenu(line_icon("sort"), "Sort By")
+        sub.setMinimumWidth(162)
+        menu.addAction(line_icon("gear"), "Show View Options")
+        sub.addAction("✓  None")
+        sub.addSeparator()
+        sub.addAction("Snap to Grid")
+        sub.addSeparator()
+        for label in (
+            "Name",
+            "Kind",
+            "Date Last Opened",
+            "Date Added",
+            "Date Modified",
+            "Date Created",
+            "Size",
+            "Tags",
+        ):
+            sub.addAction(label)
+    else:
+        menu.addAction("Open", lambda: None).setShortcut("Ctrl+O")
+        menu.addAction("Open Recent")
+        sub = menu.addMenu("More Actions")
+        sub.addActions(
+            [QAction(t, sub) for t in ("Duplicate", "Move to Trash", "Properties")]
+        )
+        menu.addSeparator()
+        checked = menu.addAction("Show hidden files")
+        checked.setCheckable(True)
+        checked.setChecked(True)
+        menu.addAction("Unavailable action").setEnabled(False)
+        menu.addAction("Properties").setShortcut("Alt+Return")
     window.menuBar().addMenu(menu).setText("File")
     dialog = QDialog(window)
     dl = QVBoxLayout(dialog)
@@ -204,7 +301,13 @@ PlasmaCore.Dialog {
         )
         QTimer.singleShot(800, ready)
         point = window.mapToGlobal(QPoint(90, 90))
-        if case in ("menu", "context", "submenu"):
+        if case == "finder-context":
+            window.hide()
+            # Place the visible parent panel at the reference crop's local
+            # (330, 161) within this 1920x1080 design probe. This aligns menu
+            # geometry; it does not register the wallpaper crop pixel by pixel.
+            point = QPoint(934, 198)
+        if case in ("menu", "context", "submenu", "finder-context"):
             if case == "menu":
                 point = window.menuBar().mapToGlobal(
                     QPoint(0, window.menuBar().height())
@@ -220,6 +323,13 @@ PlasmaCore.Dialog {
                         )
                     )
                 )
+            if case == "finder-context":
+                menu.setActiveAction(sub.menuAction())
+                kind = next(
+                    action for action in sub.actions() if action.text() == "Kind"
+                )
+                QTimer.singleShot(500, lambda: sub.setActiveAction(kind))
+                QTimer.singleShot(650, lambda: sub.move(sub.x(), sub.y() - 13))
         elif case == "combo":
             combo.showPopup()
         elif case == "tooltip":
@@ -241,9 +351,9 @@ PlasmaCore.Dialog {
                         "rect": [rect.x(), rect.y(), rect.width(), rect.height()],
                     }
                 )
-        if case in ("menu", "context", "submenu"):
+        if case in ("menu", "context", "submenu", "finder-context"):
             assert menu.isVisible(), "Popup did not open"
-        if case == "submenu":
+        if case in ("submenu", "finder-context"):
             assert sub.isVisible(), "Submenu did not open"
         if case == "combo":
             assert combo.view().isVisible(), "Combo did not open"
@@ -255,7 +365,7 @@ PlasmaCore.Dialog {
         (output / "ready").write_text(case)
 
     button.clicked.connect(lambda: QTimer.singleShot(250, show))
-    if case in ("menu", "context", "submenu", "combo", "tooltip"):
+    if case in ("menu", "context", "submenu", "finder-context", "combo", "tooltip"):
 
         def request_input():
             center = app.primaryScreen().geometry().center()
@@ -266,7 +376,7 @@ PlasmaCore.Dialog {
                 json.dumps([center.x() + local.x(), center.y() + local.y() + 18])
             )
 
-        if case == "context":
+        if case in ("context", "finder-context"):
             # Opening a QMenu is deterministic without a synthetic click and
             # avoids depending on the optional KWayland fake-input helper.
             QTimer.singleShot(600, show)
