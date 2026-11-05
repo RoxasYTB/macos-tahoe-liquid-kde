@@ -502,10 +502,10 @@ frame.expansion=0
 
 [Menu]
 inherits=PanelButtonCommand
-frame.top=13
-frame.bottom=13
-frame.left=13
-frame.right=13
+frame.top=0
+frame.bottom=0
+frame.left=0
+frame.right=0
 frame.element=menu
 interior.element=menu
 text.normal.color=#eff0f1
