@@ -319,6 +319,23 @@ KDE's real action labels also make its panels wider/taller than Finder's. The
 private sessions used display `:196`, private D-Bus and XDG directories and
 were stopped after capture; the active desktop was not changed.
 
+#### Rejected direct `submenu_overlap=5` experiment — 2026-11-05
+
+To resolve whether the configured value itself should be 5, both Light and Dark
+were rendered in fresh isolated Plasma sessions with that value. The Dark run
+used `/tmp/tahoe-plasma-finder-overlap5-dark-20261105/`; its captured QMenu
+geometries are root `[934,198,216,214]` and child `[1144,341,162,292]`.
+Compared with the calibrated Dark value 16, the child moves 11 px to the right
+and the rendered borders leave a visible gap. The paired Light comparison is
+`/tmp/tahoe-menu-join-overlap-ab.png` (reference, Light 14, Light 5). In both
+profiles, `5` is therefore rejected as the engine setting; retain Light 14 and
+Dark 16, which compensate for profile shadow depth and produce the closer join.
+
+This only resolves panel placement. The join still has a doubled edge and does
+not yet read as one continuous U-shaped perimeter; the remaining fix must
+address the shared seam/edge painting, not reduce the overlap value. Full Dark
+capture: `/tmp/tahoe-plasma-finder-overlap5-dark-20261105/desktop-context-menu-submenu-glass-on.png`.
+
 ### Distro-owned Qt 6 Kvantum deployment path — 2026-11-05
 
 `dpkg -S /usr/lib/x86_64-linux-gnu/qt6/plugins/styles/libkvantum.so` identifies
