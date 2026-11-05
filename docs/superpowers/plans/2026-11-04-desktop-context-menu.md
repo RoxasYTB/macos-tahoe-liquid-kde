@@ -122,12 +122,19 @@
 - [x] Increase the default popup radius to 14 px while preserving existing explicit user values.
 - [x] Tune the Light profile's hovered row to a muted plum/mauve matching the macOS reference; measured center pixels are `(133, 69, 98)` in KDE and `(132, 72, 101)` in macOS.
 - [x] Split child-row states in the bundled Kvantum Qt 6 engine: `State_Selected` is gray and `State_MouseOver` is blue (`#556fc4`); parent submenu hover remains mauve. A live KDE capture confirms the gray selected state.
-- [ ] Capture the blue mouse-hover state on a live KDE child menu; the supplied macOS reference shows the target blue treatment, but automated pointer movement currently closes the probe submenu.
+- [x] Capture the blue mouse-hover state on a live KDE child menu; the isolated reference-sized render shows `Kind` blue while the parent submenu row stays highlighted.
 - [x] Build the patched engine and load it only in a private Xorg/KWin/Plasma test. The private process map proves the patched `libkvantum.so` was loaded.
 - [x] For Debian installations with a distro-owned Kvantum plugin, add a user-owned plugin overlay and Plasma login environment hook so the patched style can be preferred without replacing `/usr` files. Preserve pre-existing unowned environment files and overlay files; uninstall only hash-owned artefacts.
 - [x] Compare effect-on/off captures: both popup regions change, while the sampled desktop region outside them is unchanged. Captures: `/tmp/tahoe-plasma-menu-glass-u-selection-final-20261105/desktop-context-menu-submenu.png` and `desktop-context-menu-submenu-glass-off.png`.
 - [ ] Verify the user overlay from a full Plasma login on Rebecca after installation; this change only prepares the next-login path and does not alter the current session.
 - [ ] Continue matching the outer perimeter and continuous U-like join, restrained glass edge and refraction; the current render overlaps by the measured amount but still shows a doubled edge at the join, and KDE's longer action labels produce larger panels than the macOS reference.
+
+#### Parent hover capsule and child pointer hover — 2026-11-05
+
+- The reference's `Sort By` hover sample is RGB `(132, 73, 100)` at `(420, 320)` in the supplied 1011 × 730 image. The current isolated KDE sample is `(132, 72, 100)` at `(1020, 365)` and `(134, 73, 100)` at `(1100, 365)`, with the root menu at `(934, 198)` on the same wallpaper.
+- The Kvantum patch identifies a nested QMenu through its `parentWidget()` relationship. `QAction::associatedObjects()` also reports the root menu in unrelated associations, so using that list to classify the root incorrectly suppressed its submenu hover state.
+- When a child item under the pointer is painted, its parent QMenu now receives an update for the visible submenu action. The root row is redrawn as an inset rounded mauve capsule; the child mouse-hover remains blue and keyboard selection remains gray.
+- Fresh private render: `/tmp/tahoe-menu-join-parent-pill-20261105/finder-context/on.png`; crop: `/tmp/tahoe-menu-parent-pill.png`. The comparison montage `/tmp/tahoe-menu-parent-pill-comparison.png` confirms close color and inset alignment. The parent and child panel outlines remain independently visible at the overlap, so the continuous U-shaped rim is still unfinished.
 
 ## Source path evidence
 
@@ -200,6 +207,16 @@ The other useful implementation reference, XMacTahoe, explicitly separates conve
 - Keep the measured child hover blue, keyboard/current selection gray, and parent submenu hover muted mauve as three distinct visual states.
 - Batch the next iteration as a single real-Plasma A/B pair: overlap plus connected edge only, with blur/refraction held constant. Accept or revert the pair before touching radius, fill or optical strength.
 - Treat Liquid Glass and legacy Acrylic/force-blur as mutually exclusive on these menu surfaces so no static or second blur layer obscures the live refracted scene.
+
+### Additional implementation references — 2026-11-05
+
+- Apple's WWDC25 [Build an AppKit app with the new design](https://developer.apple.com/videos/play/wwdc2025/310/) explains the macOS material as context-adaptive glass and demonstrates native AppKit adoption. It is useful for platform behavior and layering, but does not expose the private rendering parameters used by Finder's context menu.
+- Aave Labs' [Building Glass for the Web](https://aave.com/design/building-glass-for-the-web) is an engineering write-up for shape-based refraction, not just backdrop blur. Its method is a useful reference for edge displacement and separating crisp content from the glass surface; its web renderer cannot be copied directly into KWin because KWin must sample the composed desktop scene.
+- The open-source [`samasante/liquid-glass` GlassContextMenu](https://github.com/samasante/liquid-glass/blob/main/examples/GlassContextMenu.tsx) demonstrates a custom glass panel with a separate sharp row layer and edge treatment. Treat it as a visual/algorithm reference only: it builds a web component and is not a native desktop-menu integration.
+- [`4v3ngR/kwin-effects-glass`](https://github.com/4v3ngR/kwin-effects-glass) is the relevant compositor-side implementation family: it extends KWin's blur pipeline with refraction and requires the stock translucency blur path to be disabled to avoid conflicts. The project in this repository already contains its own KWin effect, so compare shader stages and limitations before borrowing code.
+- [`chapdel/XMacTahoe`](https://github.com/chapdel/xmactahoe) is a second KDE reference that keeps Kvantum responsible for Qt popup styling and offers KWin Glass as a separate optional rendering mode. It corroborates the architecture already used here; it does not provide the connected Finder parent/submenu contour.
+
+**Research conclusion:** No located public project provides a drop-in native KDE implementation of Tahoe's connected Finder context menu. Reuse the documented separation of concerns and the glass edge/refraction techniques, while keeping the native `QMenu` action tree. The remaining custom work is narrowly scoped to joining the two native popup silhouettes and maintaining independent parent-hover, child-hover, and keyboard-selection colors; it should be done as one isolated render pass, not another broad parameter sweep.
 
 ### `spread_menuitems` X11 composite A/B — 2026-11-05
 
