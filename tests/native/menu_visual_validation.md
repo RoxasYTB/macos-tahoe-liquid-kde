@@ -216,7 +216,17 @@ rounds the panel but retains a thick pale frame; reducing the SVG highlight
 did not control that frame. The experiment used a temporary XDG tree and
 private KWin, and ended with the harness. No repository theme asset or active
 desktop setting changed. Do not repeat this SVG-only highlight adjustment;
-the remaining edge is painted by the Kvantum menu frame path.
+the remaining edge is not controlled by that SVG highlight.
+
+A second isolated trial set `[Menu] frame=false` and increased only the
+`menu-normal` center patch corner radius to 10 px. The pale frame disappeared,
+but the menu fill developed asymmetric rounded corners
+(`/tmp/tahoe-plasma-menu-interior-round-20261105/desktop-context-menu.png`).
+This rejects a center-path-only fix: the frame and the four interior corner
+patches need to be changed together. Both trials used temporary XDG trees and
+private Xorg/KWin sessions; neither changed repository assets or the active
+desktop. Next work should edit the complete nine-patch as a unit, then verify
+light and dark native-menu rendering before changing source assets.
 
 ## Limits and probe corrections
 
