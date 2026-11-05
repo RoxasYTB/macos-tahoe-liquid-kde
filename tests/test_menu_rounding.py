@@ -50,13 +50,25 @@ def test_native_rounding_preserves_menu_geometry(repo, tmp_path, mode, scale):
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
-def test_submenu_overlap_matches_connected_glass_reference(repo, mode):
+def test_submenu_overlap_compensates_profile_shadow_for_five_pixel_join(repo, mode):
     config = repo / "src/offline/kvantum/mac-tahoe-liquid-kde" / (
         f"mac-tahoe-liquid-kde{mode}.kvconfig"
     )
     general = config.read_text().split("[%General]", 1)[1].split("\n[", 1)[0]
     values = dict(line.split("=", 1) for line in general.splitlines() if "=" in line)
-    assert values["submenu_overlap"] == "5"
+    menu = config.read_text().split("[Menu]", 1)[1].split("\n[", 1)[0]
+    frame = dict(line.split("=", 1) for line in menu.splitlines() if "=" in line)
+    # Kvantum subtracts the menu's horizontal frame/shadow margin before Qt
+    # positions the child. Paired values keep that placement metric equal in
+    # both profiles; a private Plasma capture calibrated the visible join.
+    assert values["submenu_overlap"] == ("14" if not mode else "16")
+    horizontal_margin = max(int(frame["frame.left"]), int(frame["frame.right"]))
+    effective_overlap = (
+        int(values["submenu_overlap"])
+        - int(values["menu_shadow_depth"])
+        - horizontal_margin
+    )
+    assert effective_overlap == 10
 
 
 def _probe():

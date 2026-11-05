@@ -305,13 +305,19 @@ pixels. This shows the effect is separately visible on each popup surface
 without changing the desktop outside them. It does not by itself prove a
 pixel-perfect match of blur or refraction.
 
-The tested config uses 5 px submenu overlap and a 14 px popup radius. The
-panels meet, but a doubled seam remains visible at their join; their outer
-silhouette is not yet the continuous U-shaped reference. KDE's real action
-labels also make its root and submenu wider/taller than Finder's. Those visual
-gaps remain open; no screenshot is being called a finished match. The private
-session used display `:196`, private D-Bus and private XDG directories and was
-stopped after capture; the active desktop was not changed.
+The initial config value of 5 did not produce a 5 px rendered overlap: Kvantum
+subtracts profile menu shadow depth before Qt places the child. A new isolated
+Light-profile A/B used values 9 and 14. At 9 the two visible edges touch; at 14
+the child shifts 5 px left and overlaps the root. The calibrated Dark value is
+16 because its menu shadow depth is 6 px instead of Light's 4 px. Captures:
+`/tmp/tahoe-plasma-menu-overlap9-20261105/desktop-context-menu-submenu.png`
+and `/tmp/tahoe-plasma-menu-overlap14-20261105/desktop-context-menu-submenu.png`;
+the join crop sheet is `/tmp/tahoe-menu-join-calibration.png`. The current
+14/16 values satisfy the measured horizontal overlap, but a doubled edge is
+still visible at the join and the outer silhouette is not yet a continuous U.
+KDE's real action labels also make its panels wider/taller than Finder's. The
+private sessions used display `:196`, private D-Bus and XDG directories and
+were stopped after capture; the active desktop was not changed.
 
 ### Distro-owned Qt 6 Kvantum deployment path — 2026-11-05
 
