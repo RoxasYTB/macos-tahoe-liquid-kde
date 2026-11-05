@@ -1451,7 +1451,7 @@
      d="m 198,640 h 30 v 30 h -30 z" />
   <path
      inkscape:connector-curvature="0"
-     style="opacity:.62;fill:#14031a;fill-opacity:1;fill-rule:evenodd;stroke:#ffffff;stroke-width:.15;stroke-opacity:.20"
+     style="opacity:0.50;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none"
      id="menu-normal"
      d="M 130,366 H 172 A 3,3 0 0 1 175,369 V 411 A 3,3 0 0 1 172,414 H 130 A 3,3 0 0 1 127,411 V 369 A 3,3 0 0 1 130,366 Z" />
   <g

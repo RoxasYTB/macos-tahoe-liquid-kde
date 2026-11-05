@@ -194,7 +194,9 @@ def test_tahoe_dark_kvantum_keeps_only_subtle_menu_veil(tmp_path, monkeypatch):
     root = ET.parse(target).getroot()
     menu = next(node for node in root.iter() if node.get("id") == "menu-normal")
     menu_style = dict(part.split(":", 1) for part in menu.get("style", "").split(";") if ":" in part)
-    assert float(menu_style["opacity"]) == pytest.approx(.32)
+    source_menu = next(node for node in source_root.iter() if node.get("id") == "menu-normal")
+    source_style = dict(part.split(":", 1) for part in source_menu.get("style", "").split(";") if ":" in part)
+    assert float(menu_style["opacity"]) == pytest.approx(float(source_style["opacity"]))
     assert menu_style["fill"] == "#000000"
     for node_id in ("path4382-5", "path4714-2"):
         outline = next(node for node in root.iter() if node.get("id") == node_id)

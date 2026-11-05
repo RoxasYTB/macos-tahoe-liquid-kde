@@ -2,21 +2,37 @@
 +++ b/Kvantum/style/Kvantum.cpp
 @@ -34,0 +35 @@
 +#include <QCursor>
-@@ -3286,0 +3288,13 @@
+@@ -3225,0 +3227,4 @@
++      // Layout includes a five-pixel text inset; the painted glass only
++      // excludes the transparent shadow, not that interior breathing room.
++      if (qobject_cast<const QMenu*>(widget))
++        fspec.top = fspec.bottom = qMax(0, fspec.top - 5);
+@@ -3286,0 +3292,24 @@
 +      // Match Aurorae's one-pixel, 12% white application-window edge.
 +      if (widget && qobject_cast<const QMenu*>(widget))
 +      {
-+        const QRectF edge = QRectF(interiorRect(r, fspec)).adjusted(0.5, 0.5, -0.5, -0.5);
++        const QRect menuSurface = interiorRect(r, fspec);
++        if (blurHelper_ && tspec_now.popup_blurring)
++        {
++          QWidget *menu = const_cast<QWidget*>(widget);
++          blurHelper_->registerWidget(menu);
++          if (menu->property("_kvantum_menu_surface").toRect() != menuSurface)
++            menu->setProperty("_kvantum_menu_surface", menuSurface);
++        }
++        const QRectF edge = QRectF(menuSurface).adjusted(0.5, 0.5, -0.5, -0.5);
 +        painter->save();
 +        painter->setRenderHint(QPainter::Antialiasing, true);
-+        QPen edgePen(QColor(255, 255, 255, 31));
++        QPen edgePen(QColor(0, 0, 0, 31));
 +        edgePen.setWidthF(1.0);
 +        painter->setPen(edgePen);
 +        painter->setBrush(Qt::NoBrush);
++        painter->drawRoundedRect(edge.adjusted(-1.0, -1.0, 1.0, 1.0), 10.5, 10.5);
++        edgePen.setColor(QColor(255, 255, 255, 31));
++        painter->setPen(edgePen);
 +        painter->drawRoundedRect(edge, 9.5, 9.5);
 +        painter->restore();
 +      }
-@@ -5782,0 +5797,59 @@
+@@ -5782,0 +5812,59 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
 +        const auto ownsSubmenu = [menu](const QMenu *candidate) {
 +          if (!candidate || candidate == menu || !candidate->isVisible())
@@ -76,7 +92,7 @@
 +        }
 +        if (openSubmenuRow)
 +          status = KL1("normal");
-@@ -5783,0 +5857,21 @@
+@@ -5783,0 +5872,21 @@
 +        const bool tahoeChildSelection =
 +            isSubmenu
 +            && opt->menuItemType != QStyleOptionMenuItem::Separator
@@ -84,33 +100,33 @@
 +            && ((option->state & State_Selected) || pointerHover);
 +        if (tahoeChildSelection)
 +        {
-+          QRect selectionRect = option->rect.adjusted(5, 2, -5, -2);
++          QRect selectionRect = option->rect.adjusted(5, 0, -5, 0);
 +          const QColor selectionColor = pointerHover
 +              ? QColor(85, 111, 196)
 +              : QColor(126, 126, 134, 190);
 +          QPainterPath selectionPath;
 +          selectionPath.addRoundedRect(selectionRect,
-+                                       qMin(8.0, selectionRect.height() / 2.0),
-+                                       qMin(8.0, selectionRect.height() / 2.0));
++                                       qMin(6.0, selectionRect.height() / 2.0),
++                                       qMin(6.0, selectionRect.height() / 2.0));
 +          painter->save();
 +          painter->setRenderHint(QPainter::Antialiasing, true);
 +          painter->fillPath(selectionPath, selectionColor);
 +          painter->restore();
 +          status = KL1("normal");
 +        }
-@@ -5819,0 +5914,11 @@
+@@ -5819,0 +5929,11 @@
 +          }
 +
 +          if (openSubmenuRow)
 +          {
-+            const QRect highlightRect = option->rect.adjusted(5, 2, -5, -2);
++            const QRect highlightRect = option->rect.adjusted(5, 0, -5, 0);
 +            QPainterPath highlightPath;
 +            highlightPath.addRoundedRect(highlightRect, 7.0, 7.0);
 +            painter->save();
 +            painter->setRenderHint(QPainter::Antialiasing, true);
 +            painter->fillPath(highlightPath, QColor(160, 112, 125, 140));
 +            painter->restore();
-@@ -6053,2 +6158,18 @@
+@@ -6053,2 +6173,18 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
@@ -131,3 +147,31 @@
 +            painter->setBrush(Qt::NoBrush);
 +            painter->drawPath(chevron);
 +            painter->restore();
+@@ -13228,0 +13365,2 @@
++      if (metric == PM_MenuVMargin && qobject_cast<const QMenu*>(widget))
++        return getMenuMargin(false) + 5;
+@@ -14518 +14656,4 @@
+-          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
++          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
++          // Preserve the application's font and combo/QML menu geometry.
++          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
++          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + textPadding));
+--- a/Kvantum/style/blur/blurhelper.cpp
++++ b/Kvantum/style/blur/blurhelper.cpp
+@@ -175,0 +176,4 @@
++    case QEvent::DynamicPropertyChange:
++      if (static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() != "_kvantum_menu_surface")
++        break;
++      [[fallthrough]];
+@@ -238,0 +243,5 @@
++  const QRect declaredMenuSurface = widget->property("_kvantum_menu_surface").toRect();
++  const bool hasMenuSurface = qobject_cast<QMenu*>(widget)
++      && !declaredMenuSurface.isEmpty() && rect.contains(declaredMenuSurface);
++  if (hasMenuSurface)
++    rect = declaredMenuSurface;
+@@ -288,0 +298,2 @@
++    if (hasMenuSurface)
++      rect.moveTopLeft((QPointF(rect.topLeft()) * dpr).toPoint());
+@@ -294 +305 @@
+-  if (!r.isEmpty())
++  if (!r.isEmpty() && !hasMenuSurface)

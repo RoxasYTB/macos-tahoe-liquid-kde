@@ -514,3 +514,53 @@ still differ. Reference and KDE menus lie over different wallpaper regions, so
 these captures do not establish matching blur/refraction strength. KDE action
 contents, icon colors and resulting panel dimensions differ intentionally.
 No active desktop configuration was changed.
+
+
+### 2026-11-05: explicit menu surface and neutral live material
+
+Kvantum now publishes its actual painted QMenu rectangle to BlurHelper. Its
+rounded blur region excludes the native transparent shadow margins. Registration
+also covers menus that were translucent before polish. Geometry changes trigger
+one delayed blur-region update; unchanged paints do not rewrite the property.
+The existing `popup_blurring` preference gates this path. The private X11 capture
+records both `_KDE_NET_WM_BLUR_BEHIND_REGION` properties with a four-pixel inset
+and nine-pixel corner geometry. This removes the exposed wide compositor rim.
+
+The native edge now uses the application's adjacent one-pixel black/white lines,
+both at 12% opacity. The scalable SVG stroke is removed. Both native menu center
+assets use neutral black at 50% opacity. The dark installer recognizes the current
+material opacities, clears the obsolete frame, and preserves the chosen center
+opacity; the corresponding test checks asset/staged consistency and idempotence.
+No saturation/contrast experiment is retained in the KWin effect.
+
+Native QMenu layout now has five pixels of vertical interior padding. The paint
+rectangle excludes shadow only, so padding cannot shrink the glass surface. Text
+height remains derived from the application's font; native padding is nine pixels
+instead of QCommonStyle's eight. Combo/QML paths retain their previous geometry.
+The menu-item layout frame remains three pixels, expansion remains 12, and
+separators, action model and horizontal text margins are unchanged. The explicit
+visual-fidelity request takes priority over the earlier unchanged-row-height rule.
+Pointer selections occupy the full native row; child rounding is six pixels.
+
+Verification directory: `/tmp/tahoe-menu-native-spacing-final-20261105/`.
+Only `liquidglass` was active; maps verify both rebuilt plugins. The system's
+actual SF Pro Text 10-point settings and user font directory were provided to
+this private session. The test wallpaper was aligned to the supplied reference
+at width 2560, crop origin (1117,224). An RGB calibration fitted only outside menu
+regions reduces substrate mean errors to (0.82,0.69,0.89) levels per channel.
+That calibrated substrate is private test data, not an application background.
+
+The live foreground probe is a separate, unglassed, non-focusing Qt window. Its
+change affects 24,509 sampled parent pixels and 25,208 child pixels above eight
+RGB levels. Both sampled gray surfaces have zero median chroma: no fixed purple
+client tint remains. On/off captures also establish compositor work on both
+surfaces (365 and 3,633 sampled pixels above eight RGB levels respectively).
+The blue row is 24 pixels tall, matching the reference; its current y range is
+400..424 versus 402..426 in the reference fixture. The comparison remains a
+fixture, not a replacement for Plasma actions or a claim of pixel identity.
+
+Built bundled Kvantum and the X11 glass effect successfully. Archive-plus-patch
+reapplication exactly reproduces both compiled Kvantum source files. Targeted
+menu, popup, surface and glass-config checks: 31 passed, 28 skipped. The skipped
+render checks require unavailable optional QtSvg bindings. Actual X11 screenshots
+are reviewed separately. No active session settings were modified.
