@@ -205,7 +205,7 @@ Neither temporary setting is accepted. The source stays unchanged until the
 frame fill/highlight can be separated from its rounding; correct the stale
 plan note before any future margin edits.
 
-### Isolated light-frame highlight trial — 2026-11-05
+### Isolated light-frame trials before the paired correction — 2026-11-05
 
 The current Light-profile render at 0 px still has a hard bright perimeter
 and corners tighter than the macOS reference. One private Xorg/KWin trial set
@@ -225,8 +225,31 @@ but the menu fill developed asymmetric rounded corners
 This rejects a center-path-only fix: the frame and the four interior corner
 patches need to be changed together. Both trials used temporary XDG trees and
 private Xorg/KWin sessions; neither changed repository assets or the active
-desktop. Next work should edit the complete nine-patch as a unit, then verify
-light and dark native-menu rendering before changing source assets.
+desktop. The paired correction below supersedes the earlier “edit the complete
+nine-patch” next step.
+
+### Rounded menu fill checkpoint — 2026-11-05
+
+Tracing the upstream Kvantum Qt 6 `PE_PanelMenu` paint path showed why
+`frame.*=0` retained a visible rim: zero frame margins do not disable the
+inherited `hasFrame` flag. The style paints the interior and then the frame as
+separate elements. Setting `[Menu] frame=false` removes that extra frame; a
+thin dark stroke on each profile's existing translucent `menu-normal` path
+provides the edge without a second filled band.
+
+This paired change is rendered through the actual Plasma desktop Folder View
+menu in private Xorg/KWin sessions: Light at
+`/tmp/tahoe-plasma-menu-interior-stroke-valid-20261105/desktop-context-menu.png`
+and Dark at
+`/tmp/tahoe-plasma-menu-dark-rounded-fill-20261105/desktop-context-menu.png`.
+The existing native KDE actions and submenu remain in the menu. The Light
+capture is closer to the reference's floating rounded silhouette; both
+profiles retain live wallpaper visibility behind the translucent surface.
+`python3 -m pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py
+--tb=short` reports **9 passed, 3 skipped** (PyQt6.QtSvg unavailable); XML
+parsing of both SVGs and `git diff --check` pass. These are isolated-session
+checks; the active Plasma/KWin session was not changed. Residual differences
+include KDE's native action labels and the resulting wider/taller proportions.
 
 ## Limits and probe corrections
 
