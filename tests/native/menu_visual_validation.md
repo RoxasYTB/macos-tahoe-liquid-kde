@@ -407,6 +407,11 @@ Comparison crops are `/tmp/tahoe-menu-rim-reference-compare.png` and
   `BlurStrength=1.0`, and confirmed the new KConfig default is used. The KWin
   effect and its configuration module both build successfully from
   `work/liquidglass-build`; JSON/XML parsing and `git diff --check` pass.
+- The same source-built plugin was rendered with the dark Plasma color scheme
+  and dark Kvantum profile in `/tmp/tahoe-plasma-finder-dark-profile-20261105/`.
+  `effects-active.txt`, `liquidglass-loaded.txt` and
+  `kvantum-patched-loaded.txt` identify the live private components; the
+  captured desktop menu and submenu keep the same light wallpaper behind them.
 - This is an opacity calibration, not completion of the menu reproduction.
   The connected U-shaped join still has a doubled edge in the deterministic
   fixture; the directional, restrained Liquid Glass contour and the dark
