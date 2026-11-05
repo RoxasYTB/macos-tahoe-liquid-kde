@@ -312,3 +312,22 @@ labels also make its root and submenu wider/taller than Finder's. Those visual
 gaps remain open; no screenshot is being called a finished match. The private
 session used display `:196`, private D-Bus and private XDG directories and was
 stopped after capture; the active desktop was not changed.
+
+### Distro-owned Qt 6 Kvantum deployment path — 2026-11-05
+
+`dpkg -S /usr/lib/x86_64-linux-gnu/qt6/plugins/styles/libkvantum.so` identifies
+the current host's Kvantum plugin as the `qt-style-kvantum` package; it has no
+project ownership marker. The installer therefore preserves that system file
+and builds the same patched engine into a user-owned Qt plugin overlay. A
+managed Plasma login script prepends the overlay path through `QT_PLUGIN_PATH`;
+the ordinary Kvantum style key and selected theme remain in use. The overlay,
+environment-file collision handling, hash-owned uninstall, and distro-plugin
+preservation have unit coverage in `tests/test_kvantum_step.py`.
+
+The earlier isolated render used the same Qt mechanism (`QT_PLUGIN_PATH` with
+the patched plugin before the distro search path) and confirmed the patched
+plugin was loaded in Plasma. The install helper and generated login script have
+unit coverage, but a full Plasma login with the overlay installed has not yet
+been run on Rebecca. No environment file or plugin was installed on the active
+host; the blue-child change will take effect after installation and the next
+login.

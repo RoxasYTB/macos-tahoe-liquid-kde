@@ -123,7 +123,9 @@
 - [x] Tune the Light profile's hovered row to a muted plum/mauve matching the macOS reference; measured center pixels are `(133, 69, 98)` in KDE and `(132, 72, 101)` in macOS.
 - [x] Patch the bundled Kvantum Qt 6 engine narrowly so a selected ordinary item in a submenu uses the macOS blue fill (`#556fc4`), while the hovered submenu-opening row retains its mauve treatment. KDE's native actions and labels are still supplied by Plasma.
 - [x] Build the patched engine and load it only in a private Xorg/KWin/Plasma test. The private process map proves the patched `libkvantum.so` was loaded.
+- [x] For Debian installations with a distro-owned Kvantum plugin, add a user-owned plugin overlay and Plasma login environment hook so the patched style can be preferred without replacing `/usr` files. Preserve pre-existing unowned environment files and overlay files; uninstall only hash-owned artefacts.
 - [x] Compare effect-on/off captures: both popup regions change, while the sampled desktop region outside them is unchanged. Captures: `/tmp/tahoe-plasma-menu-glass-u-selection-final-20261105/desktop-context-menu-submenu.png` and `desktop-context-menu-submenu-glass-off.png`.
+- [ ] Verify the user overlay from a full Plasma login on Rebecca after installation; this change only prepares the next-login path and does not alter the current session.
 - [ ] Continue matching the outer perimeter, continuous U-like join, restrained glass edge and refraction; the current render still shows a join seam and KDE's longer action labels produce larger panels than the macOS reference.
 
 ## Source path evidence
