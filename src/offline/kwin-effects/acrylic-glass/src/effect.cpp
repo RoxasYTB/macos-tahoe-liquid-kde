@@ -502,6 +502,7 @@ void BlurEffect::reconfigure(ReconfigureFlags flags)
     // and makes the sampled content appear pink even when the app is not.
     m_darkGradientOverlay = false;
     m_materialOpacity = qBound(0.0, BlurConfig::materialOpacity(), 1.0);
+    m_menuMaterialOpacity = qBound(0.0, BlurConfig::menuMaterialOpacity(), 1.0);
     const auto gradientColor = [](const QColor &color, double opacity) {
         return QVector4D(color.redF(), color.greenF(), color.blueF(), qBound(0.0, opacity, 1.0));
     };
@@ -1590,6 +1591,7 @@ void BlurEffect::blur(
     // opts in via RoundCornersOfMaximizedWindows.
     const bool popupSurface = explicitClientBlurRegion || w->isTooltip() || w->isPopupWindow()
         || w->isMenu() || w->isDropdownMenu() || w->isPopupMenu() || w->isAppletPopup();
+    const bool menuSurface = w->isMenu() || w->isDropdownMenu() || w->isPopupMenu();
     const QMatrix4x4& colorMatrix = popupSurface ? m_popupColorMatrix : m_colorMatrix;
     const float modulation = opacity * opacity;
 
@@ -1733,7 +1735,8 @@ void BlurEffect::blur(
     // Panels and the Dock retain untinted glass under every material.
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.darkGradientOverlayLocation,
         int(m_darkGradientOverlay && !w->isDock()));
-    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.materialOpacityLocation, m_materialOpacity);
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.materialOpacityLocation,
+        menuSurface ? m_menuMaterialOpacity : m_materialOpacity);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.centerOpacityLocation, centerOpacity);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.dockSurfaceLocation, int(dockSurface));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.backgroundSizeLocation,

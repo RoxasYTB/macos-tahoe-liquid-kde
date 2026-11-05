@@ -383,3 +383,31 @@ The next edge pass should shape the menu's SVG rim and its directional
 highlight together instead of raising the global reflection strength.
 Comparison crops are `/tmp/tahoe-menu-rim-reference-compare.png` and
 `/tmp/tahoe-menu-highlight-14-60.png`.
+
+### Menu-specific live-glass opacity — 2026-11-05
+
+- The earlier opacity A/B copied the plugin mapped into the active desktop
+  (built 2026-11-03), while this repository's isolated build was newer. The
+  current source plugin was rebuilt and copied into private Xorg sessions;
+  `/tmp/tahoe-plasma-finder-menuopacity70-20261105/liquidglass-loaded.txt`
+  confirms KWin mapped that private copy and `effects-active.txt` lists
+  `liquidglass`.
+- Added `MenuMaterialOpacity`, separate from the general glass opacity, so
+  menu tuning does not change the Dock or ordinary glass surfaces. The KCM
+  exposes it as “Menu glass opacity.” The Tahoe profile defaults to `0.70`;
+  Golden Gate keeps `1.0`.
+- With the source-built effect, `MenuMaterialOpacity=0.35` let too much sharp
+  wallpaper through the real Plasma menu. At `0.70`, both the Finder fixture
+  and the actual Folder View `Create New` submenu retain blur while revealing
+  more live desktop. The menu remains on the live compositor path; no wallpaper
+  texture is baked into the surface. Captures are under
+  `/tmp/tahoe-plasma-finder-menuopacity35-20261105/` and
+  `/tmp/tahoe-plasma-finder-menudefault-20261105/`.
+- The latter private capture omitted `MenuMaterialOpacity` from `kwinrc`, used
+  `BlurStrength=1.0`, and confirmed the new KConfig default is used. The KWin
+  effect and its configuration module both build successfully from
+  `work/liquidglass-build`; JSON/XML parsing and `git diff --check` pass.
+- This is an opacity calibration, not completion of the menu reproduction.
+  The connected U-shaped join still has a doubled edge in the deterministic
+  fixture; the directional, restrained Liquid Glass contour and the dark
+  profile still need fresh side-by-side renders.

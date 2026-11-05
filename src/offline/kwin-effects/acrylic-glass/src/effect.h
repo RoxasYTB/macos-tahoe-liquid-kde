@@ -375,6 +375,7 @@ private:
     float m_highlightStrength; ///< Rim intensity multiplier.
     bool m_darkGradientOverlay = false;
     float m_materialOpacity = 1.0f;
+    float m_menuMaterialOpacity = 0.70f;
     QVector4D m_gradientTop;
     QVector4D m_gradientBottom;
 

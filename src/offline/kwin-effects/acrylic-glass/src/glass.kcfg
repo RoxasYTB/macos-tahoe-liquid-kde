@@ -92,6 +92,11 @@ tahoe-control-center</default>
         <entry name="MaterialOpacity" type="Double">
             <default>1.0</default>
         </entry>
+        <entry name="MenuMaterialOpacity" type="Double">
+            <default>0.70</default>
+            <min>0.0</min>
+            <max>1.0</max>
+        </entry>
         <entry name="GradientTopColor" type="Color">
             <default>#000000</default>
         </entry>

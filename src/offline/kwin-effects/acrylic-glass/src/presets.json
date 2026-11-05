@@ -5,6 +5,7 @@
     "values": {
       "BlurStrength": 1.0,
       "MaterialOpacity": 1.0,
+      "MenuMaterialOpacity": 0.70,
       "NoiseStrength": 1,
       "RgbDriftStrength": 0.0,
       "MagnifyGlassStrength": 0.25,
@@ -28,6 +29,7 @@
     "values": {
       "BlurStrength": 1.0,
       "MaterialOpacity": 1.0,
+      "MenuMaterialOpacity": 1.0,
       "NoiseStrength": 1,
       "RgbDriftStrength": 0.0,
       "MagnifyGlassStrength": 0.25,

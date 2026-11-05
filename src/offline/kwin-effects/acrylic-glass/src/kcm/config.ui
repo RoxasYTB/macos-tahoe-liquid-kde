@@ -140,6 +140,35 @@
            </widget>
           </item>
           <item row="2" column="0">
+           <widget class="QLabel" name="labelMenuMaterialOpacity">
+            <property name="text">
+             <string>Menu glass opacity</string>
+            </property>
+            <property name="toolTip">
+             <string>Controls how much of the live desktop remains visible through menus.</string>
+            </property>
+            <property name="buddy">
+             <cstring>kcfg_MenuMaterialOpacity</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QDoubleSpinBox" name="kcfg_MenuMaterialOpacity">
+            <property name="toolTip">
+             <string>Lower values reveal more of the live desktop through menus while keeping menu text and icons opaque.</string>
+            </property>
+            <property name="maximum">
+             <double>1</double>
+            </property>
+            <property name="singleStep">
+             <double>0.05</double>
+            </property>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
            <widget class="QLabel" name="labelMagnifyGlassStrength">
             <property name="text">
              <string>Refraction</string>
@@ -149,7 +178,7 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="kcfg_MagnifyGlassStrength">
             <property name="toolTip">
              <string>Bend the background near the glass edge. 0 disables distortion.</string>
@@ -229,7 +258,7 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
+          <item row="4" column="0">
            <widget class="QLabel" name="labelGradientBottomColor">
             <property name="text">
              <string>Bottom color</string>
@@ -239,10 +268,10 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
+          <item row="4" column="1">
            <widget class="KColorButton" name="kcfg_GradientBottomColor" />
           </item>
-          <item row="4" column="0">
+          <item row="5" column="0">
            <widget class="QLabel" name="labelGradientBottomOpacity">
             <property name="text">
              <string>Bottom tint strength</string>
@@ -252,7 +281,7 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="5" column="1">
            <widget class="QDoubleSpinBox" name="kcfg_GradientBottomOpacity">
             <property name="maximum">
              <double>1</double>
@@ -403,7 +432,7 @@
             </property>
            </widget>
           </item>
-          <item row="5" column="0">
+          <item row="6" column="0">
            <widget class="QLabel" name="labelContrast">
             <property name="text">
              <string>Contrast</string>
@@ -413,7 +442,7 @@
             </property>
            </widget>
           </item>
-          <item row="5" column="1">
+          <item row="6" column="1">
            <widget class="QDoubleSpinBox" name="kcfg_Contrast">
             <property name="maximum">
              <double>2</double>
@@ -426,7 +455,7 @@
             </property>
            </widget>
           </item>
-          <item row="6" column="0">
+          <item row="7" column="0">
            <widget class="QLabel" name="labelSaturation">
             <property name="text">
              <string>Saturation</string>
@@ -436,7 +465,7 @@
             </property>
            </widget>
           </item>
-          <item row="6" column="1">
+          <item row="7" column="1">
            <widget class="QDoubleSpinBox" name="kcfg_Saturation">
             <property name="maximum">
              <double>2</double>
@@ -449,7 +478,7 @@
             </property>
            </widget>
           </item>
-          <item row="7" column="0">
+          <item row="8" column="0">
            <widget class="QLabel" name="labelPopupBrightness">
             <property name="text">
              <string>Popup brightness</string>
@@ -459,7 +488,7 @@
             </property>
            </widget>
           </item>
-          <item row="7" column="1">
+          <item row="8" column="1">
            <widget class="QDoubleSpinBox" name="kcfg_PopupBrightness">
             <property name="maximum">
              <double>2</double>
@@ -472,7 +501,7 @@
             </property>
            </widget>
           </item>
-          <item row="8" column="0">
+          <item row="9" column="0">
            <widget class="QLabel" name="labelNoiseStrength">
             <property name="text">
              <string>Grain</string>
@@ -482,7 +511,7 @@
             </property>
            </widget>
           </item>
-          <item row="8" column="1">
+          <item row="9" column="1">
            <widget class="QSpinBox" name="kcfg_NoiseStrength">
             <property name="maximum">
              <number>64</number>
