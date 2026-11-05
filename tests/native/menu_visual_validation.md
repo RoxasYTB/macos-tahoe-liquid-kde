@@ -305,6 +305,23 @@ pixels. This shows the effect is separately visible on each popup surface
 without changing the desktop outside them. It does not by itself prove a
 pixel-perfect match of blur or refraction.
 
+### Child selection versus pointer hover — 2026-11-05
+
+The earlier patch painted every active child row blue, conflating Qt's
+keyboard/current `State_Selected` with the pointer's `State_MouseOver`. The
+bundled patch now renders a neutral gray for a selected child row and the Tahoe
+blue (`#556fc4`) only when the pointer is over that row. Parent submenu hover
+continues to use the existing mauve style.
+
+The patched Qt 6 engine compiled and loaded in an isolated Plasma session. Its
+`finder-menu-layout-on.png` capture shows the selected `Kind` row in gray at
+`/tmp/tahoe-plasma-menu-state-batch-dark-20261105/finder-menu-layout-on.png`.
+The side-by-side visual batch is `/tmp/tahoe-menu-state-batch-comparison.png`;
+the macOS side is the supplied hover reference and the KDE side is the
+keyboard-selected state. Automated pointer motion closed the test submenu, so
+an actual KDE pointer-hover capture is still needed before treating that branch
+as visually verified.
+
 The initial config value of 5 did not produce a 5 px rendered overlap: Kvantum
 subtracts profile menu shadow depth before Qt places the child. A new isolated
 Light-profile A/B used values 9 and 14. At 9 the two visible edges touch; at 14

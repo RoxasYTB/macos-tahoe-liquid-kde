@@ -1,6 +1,6 @@
 --- a/Kvantum/style/Kvantum.cpp
 +++ b/Kvantum/style/Kvantum.cpp
-@@ -5782,0 +5783,36 @@
+@@ -5782,0 +5783,39 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
 +        bool isSubmenu = false;
 +        if (menu != nullptr)
@@ -18,13 +18,16 @@
 +            isSubmenu
 +            && opt->menuItemType != QStyleOptionMenuItem::Separator
 +            && opt->menuItemType != QStyleOptionMenuItem::SubMenu
-+            && (option->state & State_Selected);
++            && (option->state & (State_Selected | State_MouseOver));
 +        if (tahoeChildSelection)
 +        {
-+          /* macOS uses a blue selection in the child menu while the parent
-+             submenu row keeps its quieter hover treatment. */
++          /* Keep a keyboard/current selection neutral gray. macOS applies
++             the blue fill to the row currently under the pointer. */
 +          QRect selectionRect = option->rect.adjusted(3, 1, -3, -1);
-+          QColor selectionColor(85, 111, 196);
++          const bool pointerHover = option->state & State_MouseOver;
++          QColor selectionColor = pointerHover
++              ? QColor(85, 111, 196)
++              : QColor(126, 126, 134, 190);
 +          QPainterPath selectionPath;
 +          selectionPath.addRoundedRect(selectionRect,
 +                                       qMin(8.0, selectionRect.height() / 2.0),
