@@ -182,3 +182,10 @@ Use these sources to choose implementation mechanisms before visual tuning:
 - [XMacTahoe](https://github.com/chapdel/xmactahoe): documents the practical KDE split between Kvantum popup styling and an optional KWin Glass effect for live edge refraction. Its project description says the effect is version-sensitive and GPU-heavier, so keep it optional and test in the isolated session.
 
 Batch direction: keep current native `QMenu` actions; test only the documented paint/layout levers (`spread_menuitems`, panel/item SVG frames and shadow hints) as one small A/B matrix, with the KWin glass effect independently toggled. Preserve live backdrop capture. Do not infer exact blur, tint, or border values from HIG prose; use the supplied Tahoe reference for those values.
+
+### `spread_menuitems` X11 composite A/B — 2026-11-05
+
+- Rendered the Finder-shaped root and child `QMenu` in private Xvfb + KWin X11 sessions over the bundled Tahoe wallpaper, with the patched Kvantum Qt 6 plugin and the Liquid Glass module mapped into their respective processes. No active desktop session or source profile was changed.
+- `spread_menuitems=false`: root `[934,198,216,207]`, child `[1133,336,162,282]`.
+- `spread_menuitems=true`: root `[934,198,216,207]`, child `[1115,336,162,282]`. The option moves the submenu 18 px left in this real-compositor fixture and makes the visible join substantially wider than the macOS reference. Keep the checked-in value `false`; do not treat `true` as a general fix for the U-shaped combined contour.
+- Captures: `/tmp/tahoe-menu-spread-false-20261105/false.png` and `/tmp/tahoe-menu-spread-true-20261105/true.png`. Cropped comparison: `/tmp/tahoe-menu-spread-comparison-20261105.png`. The fixture proves the geometry consequence under the current dark Kvantum profile; it is not the Plasma desktop QAction menu, and its wallpaper is the bundled Tahoe asset rather than the supplied purple forest. Continue final contour verification on the real Plasma menu and reference wallpaper.
