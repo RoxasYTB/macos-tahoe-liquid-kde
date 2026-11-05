@@ -1460,7 +1460,7 @@
      transform="matrix(1.499999,0,0,1,-56.385384,-337.753)">
     <path
        inkscape:connector-curvature="0"
-       style="opacity:.55;fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:.38;fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        id="menu-normal-left0"
        d="m 116.257,703.753 h 6 v 48 h -6 z" />
     <g transform="matrix(0.6666671111,0,0,1,37.59028106,337.753)">
@@ -1475,7 +1475,7 @@
     <path
        id="path3597"
        d="m 122.25573,698.75378 c -3.32289,10e-4 -5.99768,2.6768 -5.99768,6.00001 h 6.00002 z"
-       style="opacity:.55;fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:.38;fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        inkscape:connector-curvature="0" />
     <g transform="matrix(0.6666681333,0,0,0.6666681333,37.59120737,460.7532337)">
       <path d="M 127 357 A 9.00001 9.00001 0 0 0 118 366 H 118.75 A 8.25001 8.25001 0 0 1 127 357.75 Z" fill="#000000" opacity=".18" />

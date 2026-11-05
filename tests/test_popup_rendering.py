@@ -56,7 +56,7 @@ def test_menu_contours_remain_visible_above_translucent_fill(repo, mode):
         x = size.width() // 2
         outer, inner, body = (image.pixelColor(x, inset + y) for y in (1, 4, 12))
         assert outer.red() < inner.red()
-        assert abs(body.alphaF() - (.48 if mode else .55)) < .01
+        assert abs(body.alphaF() - (.34 if mode else .38)) < .01
         assert outer.alphaF() > body.alphaF() and inner.alphaF() > body.alphaF()
         assert image.pixelColor(x, inset + 7) == body
         assert body.red() == (0 if mode else 255)
