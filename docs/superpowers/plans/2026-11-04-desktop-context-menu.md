@@ -50,9 +50,9 @@
 - [ ] Build the native probe helper with `cmake -S tests/native -B build/menu-probe && cmake --build build/menu-probe -j 2`. For this host, use the installed effect binaries only as inputs to the private KWin probe; the probe copies them into its own session and never changes the active compositor.
 - [ ] Capture a baseline into a new ignored directory using the installed plugin paths and host shader directory: `glass=$(find /usr/lib -type f -name liquidglass.so -print -quit); rounded=$(find /usr/lib -type f -name kwin4_effect_shapecorners.so -print -quit); test -n "$glass" -a -n "$rounded"; python3 tests/menu_visual_probe.py --glass "$glass" --rounded "$rounded" --shaders /usr/share/kwin/shaders --cases context submenu --mode Light --backend xcb --output build/desktop-context-menu-baseline-light`.
 - [ ] Render `menu-normal` and its shadow at 1× and 2× with the existing menu SVG frame probe; compare the current surface against the reference crop at its native scale.
-- [ ] Adjust only the menu surface/frame/shadow fields and `menu-normal` SVG artwork needed to produce the floating rounded shape. Keep the 3 px layout frame and current `[Menu] frame.*=0` baseline unless a before/after probe proves an adjustment is required.
-- [ ] Mirror the same structural change in the dark profile, using its existing dark palette and alpha values.
-- [ ] Run `pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py` and the light/dark isolated `context` probe; confirm the probe uses its private compositor and does not touch the active session.
+- [x] Adjust only the menu surface/frame/shadow fields and `menu-normal` SVG artwork needed to produce the floating rounded shape. Keep the 3 px layout frame and current `[Menu] frame.*=0` baseline unless a before/after probe proves an adjustment is required.
+- [x] Mirror the same structural change in the dark profile, using its existing dark palette and alpha values.
+- [x] Run `pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py` and isolated light/dark `context` captures; confirm the actual Plasma captures use private compositors and do not touch the active session.
 
 #### Baseline evidence — 2026-11-04
 
@@ -81,10 +81,10 @@
 
 **Deliverable:** The menu has aligned action text and any KDE-provided icons, legible separators, rounded item hover/focus fill and visible native submenu arrows. Disabled KDE actions remain disabled and subdued. The menu geometry and per-row heights remain stable when the pointer moves.
 
-- [ ] Capture rest, hover, keyboard-focus and submenu states through the isolated native QMenu/KWin probe for both light and dark profiles. Dark-profile real Plasma rest, pointer hover and submenu captures now exist; native QMenu focus and light-profile captures remain.
-- [ ] Keep `MenuItem` selection rounding based on `expand-menuitem-normal` and `frame.expansion=12`; preserve existing geometry, text margins, row heights, icon sizes and separator spacing.
-- [ ] Update only SVG elements that the captured QMenu actually uses; avoid editing similarly named Plasma theme assets or task-manager QML menus.
-- [ ] Run `pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py` and the isolated `context submenu` visual probe for light and dark profiles. Confirm the visible submenu indicator follows the pointer/focus state and appears only on rows with a submenu.
+- [x] Capture rest, hover, keyboard-focus and submenu states through isolated real Plasma/KWin sessions for both light and dark profiles. Current captures are in `/tmp/tahoe-plasma-menu-dark-rounded-fill-20261105/` and `/tmp/tahoe-plasma-menu-interior-stroke-valid-20261105/`.
+- [x] Keep `MenuItem` selection rounding based on `expand-menuitem-normal` and `frame.expansion=12`; preserve existing geometry, text margins, row heights, icon sizes and separator spacing.
+- [x] Update only SVG elements that the captured QMenu actually uses; avoid editing similarly named Plasma theme assets or task-manager QML menus.
+- [x] Run `pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py` and review isolated light/dark rest, hover, keyboard-focus and submenu captures. The test run reports 9 passed and 3 skipped because PyQt6.QtSvg is unavailable.
 
 ### Task 4: Verify the real desktop action path and checkpoint
 
@@ -96,9 +96,13 @@
 **Deliverable:** A reviewable comparison of the original menu crop with the light/dark native menu states and a checkpoint containing only the validated desktop-menu implementation and its tests/docs.
 
 - [x] In an isolated Xorg session with private D-Bus and HOME/XDG tree, open the installed Plasma desktop Folder View context menu and record its native actions/submenu; never start or restart Plasma on the user's active display.
-- [x] Confirm the action list still comes from the live Plasma containment action and FolderModel, then compare its panel shape, edge, row alignment, separators, hover and submenu arrow to the reference. Distinguish a QMenu-family visual probe from this real action-path capture in the validation note. The dark-profile comparison sheet is complete; light theme and keyboard traversal remain open.
+- [x] Confirm the action list still comes from the live Plasma containment action and FolderModel, then compare its panel shape, edge, row alignment, separators, hover and submenu arrow to the reference. Distinguish a QMenu-family visual probe from this real action-path capture in the validation note. Both theme profiles and keyboard selection now have isolated renders; the supplied macOS reference still lacks hover/submenu states.
 - [x] Run the targeted menu tests and `git diff --check`.
-- [ ] Stage only the four Kvantum files, `tests/test_menu_rounding.py` if changed, and `tests/native/menu_visual_validation.md`; commit and push a checkpoint without creating a pull request.
+- [x] Stage only the four Kvantum files and validation/plan documentation; commit and push a checkpoint without creating a pull request. Checkpoint: `42d113f8e584a5ecb0439395f9caeca66503e0fb1`.
+
+#### Reference gap still open — 2026-11-05
+
+The supplied `image2.png` is sufficient for the resting context menu and shows submenu chevrons, but it does not show a hovered row or an opened submenu. I asked Yohan for an optional macOS capture of `Sort By` hovered with its submenu open; continue against the existing reference while waiting. KDE's actual submenu behavior is verified, but its visual comparison to macOS in those two states remains unqualified until that reference is available.
 
 ## Source path evidence
 
