@@ -159,6 +159,28 @@ experiment was discarded because the native Qt contrast check failed; source
 files remain at checkpoint `e3ae64a`. No active Plasma/KWin session was
 changed.
 
+## Light menu tint correction — 2026-11-05
+
+The previous dark-fill experiment used the original 0.38 surface alpha and
+failed the 4.5:1 native Qt menu contrast check. The follow-up keeps the light
+profile's rounded geometry and edge treatment, changes only the center and
+matching corner fill to `#14031a` at 0.50 opacity, and sets the light menu/menu
+item foreground to white. This keeps the menu translucent while producing the
+deeper plum surface in the reference. The native contrast check now passes.
+
+Fresh real desktop-menu render, with the source light Kvantum assets and the
+private Xorg/KWin session described above:
+`/tmp/tahoe-plasma-menu-light-source-20261105/desktop-context-menu.png`.
+The same directory contains hover, submenu, keyboard-selection and glass-off
+captures. `liquidglass` and `kwin4_effect_shapecorners` were active in that
+private KWin; Plasma mapped Kvantum. The target menu's contrast and color are
+closer to macOS, though its panel proportions still follow KDE's longer native
+action labels and the corners are somewhat tighter than the reference.
+
+`python3 -m pytest -q tests/test_menu_rounding.py tests/test_popup_rendering.py
+--tb=short`: **9 passed, 3 skipped** (PyQt6.QtSvg unavailable). `git diff
+--check` is clean. The active desktop and its color scheme were not changed.
+
 ## Limits and probe corrections
 
 These are toolkit-family and frame checks, not an assertion that every external

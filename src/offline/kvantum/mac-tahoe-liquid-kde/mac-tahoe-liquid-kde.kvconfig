@@ -507,7 +507,7 @@ frame.left=0
 frame.right=0
 frame.element=menu
 interior.element=menu
-text.normal.color=#333333
+text.normal.color=#ffffff
 
 
 text.shadow=true
@@ -524,7 +524,7 @@ frame.element=menuitem
 interior.element=menuitem
 indicator.element=menuitem
 highlight.text.color=#ffffff
-text.normal.color=#333333
+text.normal.color=#ffffff
 text.focus.color=#ffffff
 
 text.margin.top=0
