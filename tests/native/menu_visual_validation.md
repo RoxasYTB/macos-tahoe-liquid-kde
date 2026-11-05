@@ -336,6 +336,21 @@ not yet read as one continuous U-shaped perimeter; the remaining fix must
 address the shared seam/edge painting, not reduce the overlap value. Full Dark
 capture: `/tmp/tahoe-plasma-finder-overlap5-dark-20261105/desktop-context-menu-submenu-glass-on.png`.
 
+#### Rejected Kvantum seam-mask prototype — 2026-11-05
+
+A private Qt 6 Kvantum build detected the actual child `QMenu` and its visible
+parent, computed their shared geometry, and clipped an 8 px strip from the
+child's left surface/frame while they overlap. The isolated Plasma session
+loaded that build (verified in `kvantum-patched-loaded.txt`), but the pixels in
+the context-menu join were identical to the unmodified capture. Captures:
+`/tmp/tahoe-plasma-finder-dark-profile-20261105/desktop-context-menu-submenu-glass-on.png`
+and `/tmp/tahoe-plasma-finder-seamclip2-dark-20261105/desktop-context-menu-submenu-glass-on.png`.
+
+This rules out the tested Kvantum `PE_PanelMenu` frame/interior as the source
+of the visible join line. The remaining edge appears to be introduced by the
+KWin glass pass or another surface layer; treat that as a hypothesis until a
+compositor-side A/B confirms it. Do not keep this prototype patch.
+
 ### Distro-owned Qt 6 Kvantum deployment path — 2026-11-05
 
 `dpkg -S /usr/lib/x86_64-linux-gnu/qt6/plugins/styles/libkvantum.so` identifies
