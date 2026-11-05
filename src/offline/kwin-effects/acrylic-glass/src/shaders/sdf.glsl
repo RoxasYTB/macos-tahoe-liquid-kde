@@ -31,6 +31,23 @@ float lgRoundedRectCoverage(float distance)
     return 1.0 - smoothstep(-0.5 * pixelWidth, 0.5 * pixelWidth, distance);
 }
 
+// A submenu can overlap the menu that spawned it. Leave that narrow shared
+// strip transparent so the parent glass remains visible beneath the child.
+// connectedMenuJoin packs: side (1=left, 2=right), startY, endY, width.
+bool lgInsideConnectedMenuJoin(vec2 position, vec2 halfSize, vec4 connectedMenuJoin)
+{
+    if (connectedMenuJoin.x < 0.5) {
+        return false;
+    }
+    float edgeDistance = connectedMenuJoin.x < 1.5
+        ? position.x + halfSize.x
+        : halfSize.x - position.x;
+    return position.y >= connectedMenuJoin.y
+        && position.y <= connectedMenuJoin.z
+        && edgeDistance >= 0.0
+        && edgeDistance < connectedMenuJoin.w;
+}
+
 vec2 lgRoundedRectNormal(vec2 p, vec2 halfSize, vec4 cornerRadius, float squircleBlend)
 {
     float r = p.x > 0.0

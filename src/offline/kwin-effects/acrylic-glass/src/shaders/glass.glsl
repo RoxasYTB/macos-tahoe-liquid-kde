@@ -16,6 +16,7 @@ uniform float offset;
 uniform vec2 halfpixel;
 uniform vec4 box;
 uniform vec4 cornerRadius;
+uniform vec4 connectedMenuJoin;
 uniform float opacity;
 uniform float rgbDriftStrength;
 uniform float magnifyGlassStrength;
@@ -41,6 +42,9 @@ void main(void)
     float d = lgRoundedRectDistance(pos, halfSize, cornerRadius);
     float mask = lgRoundedRectCoverage(d);
     if (mask <= 0.0) {
+        discard;
+    }
+    if (lgInsideConnectedMenuJoin(pos, halfSize, connectedMenuJoin)) {
         discard;
     }
 

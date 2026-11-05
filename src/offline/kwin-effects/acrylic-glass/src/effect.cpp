@@ -241,6 +241,7 @@ BlurEffect::BlurEffect()
         m_roundedOnscreenPass.boxLocation = m_roundedOnscreenPass.shader->uniformLocation("box");
         m_roundedOnscreenPass.cornerSquircleLocation = m_roundedOnscreenPass.shader->uniformLocation("cornerSquircle");
         m_roundedOnscreenPass.cornerRadiusLocation = m_roundedOnscreenPass.shader->uniformLocation("cornerRadius");
+        m_roundedOnscreenPass.connectedMenuJoinLocation = m_roundedOnscreenPass.shader->uniformLocation("connectedMenuJoin");
         m_roundedOnscreenPass.opacityLocation = m_roundedOnscreenPass.shader->uniformLocation("opacity");
         m_roundedOnscreenPass.blurSizeLocation = m_roundedOnscreenPass.shader->uniformLocation("blurSize");
         m_roundedOnscreenPass.rgbDriftStrengthLocation = m_roundedOnscreenPass.shader->uniformLocation("rgbDriftStrength");
@@ -1706,6 +1707,25 @@ void BlurEffect::blur(
     const QRectF nativeBox(std::floor(nativeBoxF.x()), std::floor(nativeBoxF.y()), std::floor(nativeBoxF.width()), std::floor(nativeBoxF.height()));
     const BorderRadius nativeCornerRadius = cornerRadius.scaled(viewport.scale()).rounded();
 
+    QVector4D connectedMenuJoin;
+    if (menuSurface && data.xScale() == 1.0 && data.yScale() == 1.0
+        && data.xTranslation() == 0.0 && data.yTranslation() == 0.0) {
+        EffectWindow *parentMenu = w->transientFor();
+        if (parentMenu && (parentMenu->isMenu() || parentMenu->isDropdownMenu() || parentMenu->isPopupMenu())) {
+            const QRectF childFrame = w->frameGeometry();
+            const QRectF parentFrame = parentMenu->frameGeometry();
+            const QRectF join = childFrame.intersected(parentFrame).intersected(surfaceRect);
+            if (join.width() > 1.0 && join.height() > 1.0) {
+                const bool childOpensRight = childFrame.center().x() >= parentFrame.center().x();
+                const float side = childOpensRight ? 1.0f : 2.0f;
+                const float startY = float((join.top() - surfaceRect.center().y()) * viewport.scale());
+                const float endY = float((join.bottom() - surfaceRect.center().y()) * viewport.scale());
+                const float width = float(join.width() * viewport.scale());
+                connectedMenuJoin = QVector4D(side, startY, endY, width);
+            }
+        }
+    }
+
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.mvpMatrixLocation, projectionMatrix);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.colorMatrixLocation, colorMatrix);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.halfpixelLocation, halfpixel);
@@ -1718,6 +1738,7 @@ void BlurEffect::blur(
 
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.cornerSquircleLocation, cornerSquircle);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.cornerRadiusLocation, nativeCornerRadius.toVector());
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.connectedMenuJoinLocation, connectedMenuJoin);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.opacityLocation, modulation);
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.blurSizeLocation, QVector2D(nativeBox.width(), nativeBox.height()));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.rgbDriftStrengthLocation,

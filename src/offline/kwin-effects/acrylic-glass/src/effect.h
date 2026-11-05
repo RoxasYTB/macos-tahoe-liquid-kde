@@ -289,6 +289,7 @@ private:
         int halfpixelLocation;
         int boxLocation;
         int cornerRadiusLocation;
+        int connectedMenuJoinLocation;
         int cornerSquircleLocation;
         int opacityLocation;
 

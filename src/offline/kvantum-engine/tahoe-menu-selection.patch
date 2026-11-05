@@ -40,3 +40,40 @@
 +             shared mauve highlight a second time. */
 +          status = KL1("normal");
 +        }
+--- a/Kvantum/style/Kvantum.cpp
++++ b/Kvantum/style/Kvantum.cpp
+@@ -3197,5 +3197,28 @@
+       fspec.expansion = 0;
+       const interior_spec ispec = getInteriorSpec(group);
++      /* Tahoe submenus overlap their parent and share its glass along the
++         seam. Leave the shared strip unpainted by the child menu panel. */
++      QRegion panelClip(option->rect);
++      const QMenu *childMenu = qobject_cast<const QMenu*>(widget);
++      if (childMenu != nullptr)
++      {
++        for (QObject *associated : childMenu->menuAction()->associatedObjects())
++        {
++          const QMenu *parentMenu = qobject_cast<const QMenu*>(associated);
++          if (parentMenu != nullptr && parentMenu->activeAction()
++              && parentMenu->activeAction()->menu() == childMenu)
++          {
++            const QRect parentGlobal(parentMenu->mapToGlobal(QPoint(0, 0)), parentMenu->size());
++            const QRect childGlobal(childMenu->mapToGlobal(QPoint(0, 0)), childMenu->size());
++            const QRect shared = parentGlobal.intersected(childGlobal);
++            if (shared.width() > 1 && shared.height() > 1)
++              panelClip -= QRegion(shared.translated(-childGlobal.topLeft()));
++            break;
++          }
++        }
++      }
++      painter->save();
++      painter->setClipRegion(panelClip, Qt::IntersectClip);
+       QRect r = option->rect;
+       theme_spec tspec_now = settings_->getCompositeSpec();
+       bool isTranslucent(!noComposite_ && widget && translucentWidgets_.contains(widget));
+@@ -3284,5 +3308,6 @@
+           painter->restore();
+       }
++      painter->restore();
+       break;
+     }
