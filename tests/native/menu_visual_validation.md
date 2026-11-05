@@ -205,6 +205,19 @@ Neither temporary setting is accepted. The source stays unchanged until the
 frame fill/highlight can be separated from its rounding; correct the stale
 plan note before any future margin edits.
 
+### Isolated light-frame highlight trial — 2026-11-05
+
+The current Light-profile render at 0 px still has a hard bright perimeter
+and corners tighter than the macOS reference. One private Xorg/KWin trial set
+all four `[Menu] frame.*` margins to 13 and reduced the white highlight alpha
+inside the `menu-normal` nine-patch from 0.22 to 0.07. The result
+(`/tmp/tahoe-plasma-menu-radius-muted-20261105/desktop-context-menu.png`)
+rounds the panel but retains a thick pale frame; reducing the SVG highlight
+did not control that frame. The experiment used a temporary XDG tree and
+private KWin, and ended with the harness. No repository theme asset or active
+desktop setting changed. Do not repeat this SVG-only highlight adjustment;
+the remaining edge is painted by the Kvantum menu frame path.
+
 ## Limits and probe corrections
 
 These are toolkit-family and frame checks, not an assertion that every external
