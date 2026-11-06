@@ -916,3 +916,42 @@ not whole-interface identity. Shadow creation/removal/recreation/resize probes
 pass at scale 1, 1.5 and 2 with unchanged exterior paddings. Build and archive
 reapplication succeed; targeted checks: 32 passed, 28 skipped. Native Plasma
 menus and changing backing remain captured in the same private session.
+
+### 2026-11-06: actual native submenu placement, without fixture repositioning
+
+The reference child has exterior black bounds x531..682, not x532..682. Its
+frame is 160x280 at (527,299). Remove the fixture's post-show sort.move call:
+the production style now positions owned X11 submenus from their QAction row,
+subtracting PM_MenuVMargin from the row's global top. Preserve Qt's chosen
+opening side and clamp the resulting rectangle to the available screen. The
+existing Show-event path retains its Qt 6.6 non-primary-screen resize workaround;
+Wayland's original anchor path is unchanged.
+
+Light/Dark submenu_overlap values become 14/18. Window overlap includes both
+shadow margins and two dark keylines: overlap+1-2*shadow-2 gives five pixels of
+white glass overlap. Raise the bundled parser's cap from 16 to 32 so Dark18 is
+honored (both parser sources stay consistent; only Qt6 is built here). Native
+child sizing/paint gains one leading pixel, preserving reference label positions;
+root sizing keeps its trailing pixel. Selection fields have symmetric six-pixel
+insets from the action rectangle.
+
+Exact-source private evidence: `/tmp/tahoe-menu-native-placement-final-20261106/`.
+The reference-labelled fixture naturally opens at parent (326,157,216,208), child
+(527,299,160,280), with no script movement of the child. Name starts at (557,386),
+and the opaque blue field has identical reference/native bounds
+(537,402)..(676,425). `reference-geometry-check.json` records that comparison.
+The real Plasma context menu and submenu are also captured with changing backing.
+
+`tests/native/menu_popup_placement.py` is an opt-in private-X11 probe. It covers
+center/right/bottom openings and an RTL left-edge case in Light/Dark at scales
+1/1.5/2. All 24 cases retain five pixels of plane overlap, keep the child inside
+the available screen, and align the first child row with the parent action when
+not constrained by the lower edge. Return triggers exactly one original QAction
+in every case. The test makes no files and refuses to launch without
+MTTKDE_PRIVATE_MENU_PROBE=1.
+
+The six patched archive files reproduce the build tree exactly. Kvantum builds;
+targeted checks finish 32 passed, 28 skipped. Shadow lifecycle probes also pass
+at all three scales. No active desktop settings/processes were changed and no
+pull request was opened. The comparison still includes content-icon and glyph
+raster differences; matching frame/selection bounds is not full-image identity.

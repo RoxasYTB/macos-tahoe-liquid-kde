@@ -60,11 +60,11 @@ def test_submenu_overlap_accounts_for_both_transparent_shadow_margins(repo, mode
     values = dict(line.split("=", 1) for line in general.splitlines() if "=" in line)
     # Qt places the child with an inclusive one-pixel menu overlap. Both
     # windows include their own transparent shadow margin: the visible glass
-    # must overlap by five pixels after removing those two margins. Verified
-    # in the isolated Plasma capture (320px parent, child at parent.x + 307).
+    # and the two dark keylines are outside the refractive glass plane.
+    # The white glass planes must overlap by five pixels.
     visible_overlap = (
         int(values["submenu_overlap"]) + 1
-        - 2 * int(values["menu_shadow_depth"])
+        - 2 * int(values["menu_shadow_depth"]) - 2
     )
     assert visible_overlap == 5
 
