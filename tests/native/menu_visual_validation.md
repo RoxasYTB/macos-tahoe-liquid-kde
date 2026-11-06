@@ -748,3 +748,25 @@ Both genuine Plasma menus remain live over blue/gray foreground changes:
 median gray chroma one level. Sole active effect is liquidglass. X11 effect
 build succeeds; final targeted checks: 32 passed, 28 skipped. All work remained
 in the private display/config. No active desktop settings or processes changed.
+
+### 2026-11-06: refine neutral material response after blur calibration
+
+Five finite-response captures (baseline, separate chroma/luma/lift perturbations,
+repeat baseline) fit the real renderer rather than guessing its alpha/gamma.
+Baseline repeats are pixel-identical. The fitted candidate was then captured
+before/after the old curve and repeated in a fresh private session.
+
+New native-menu defaults: chroma 1.2563, luma -0.48823, lift 0.04475.
+Over 22,327 masked material pixels, measured RGB MAE falls from 3.19441 to
+1.70738; channel errors are (1.59865, 0.78080, 2.74269). This excludes glyphs,
+selections, separators and outlines, and is not a full-interface fidelity score.
+No fixed tint or opacity change is introduced; equal-channel inputs retain
+neutrality through the scalar/luminance curve. Other window roles are unchanged.
+
+Exact-source evidence: `/tmp/tahoe-menu-native-tone-verified-20261106/`.
+The initial capture with compiled defaults exactly matches the explicitly
+configured candidate. Repeated old/new curves each have zero maximum pixel
+difference. The real Plasma parent/child remain live over foreground changes:
+43,754 / 24,901 sampled pixels change above eight levels, with median gray chroma
+one level. X11 effect builds successfully. Final targeted checks: 32 passed,
+28 skipped. The active desktop was not modified, and no PR was opened.
