@@ -858,3 +858,21 @@ one level of premultiplied quantization while alpha is exact. The prior binary
 fails the new root-pointer-blue check; the final binary passes. Build succeeds,
 archive patch reproduces the source, and targeted checks finish 32 passed,
 28 skipped. No active desktop configuration or processes were changed.
+
+### 2026-11-06: white menu pictograms and inset chevron
+
+Native QMenu icons use white SourceIn tinting with their original alpha mask;
+disabled icons use 110/255 white alpha. Prefer the theme's symbolic variant.
+Wallpaper and symbolic-link actions fall back to view-preview/insert-link so
+opaque colored icon backgrounds do not become solid white blocks. Original
+QIcons/assets and non-menu icons are unchanged. Native chevrons and ticks use
+white too; chevrons move two logical pixels inward, mirrored in RTL, without
+changing action geometry or hit areas.
+
+Exact-source evidence: `/tmp/tahoe-menu-native-symbolic-icons-20261106/`.
+The actual Plasma context menu and child show white symbols, including the image
+and link fallbacks. The first tint-only draft was rejected after its capture
+showed opaque rectangles for those two symbols. The final version also captures
+parent/child hover transitions and changing live backing. Kvantum builds and
+archive-plus-patch matches the compiled source. Targeted checks: 32 passed,
+28 skipped. No active desktop processes or settings were changed.

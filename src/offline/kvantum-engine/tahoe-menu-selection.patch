@@ -162,18 +162,38 @@
 @@ -5897 +6045 @@
 -            checkSpace = iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +            checkSpace = iw + (menu ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
-@@ -6053,2 +6201,18 @@
+@@ -5953 +6101,18 @@
+-            QPixmap px = getPixmapFromIcon(opt->icon, getIconMode(state,isInactive,lspec), iconstate, iconSize);
++            QIcon nativeIcon = opt->icon;
++            if (menu)
++            {
++              const QString name = nativeIcon.name();
++              if (!name.isEmpty() && QIcon::hasThemeIcon(name + QStringLiteral("-symbolic")))
++                nativeIcon = QIcon::fromTheme(name + QStringLiteral("-symbolic"));
++              else if (name == QStringLiteral("preferences-desktop-wallpaper"))
++                nativeIcon = QIcon::fromTheme(QStringLiteral("view-preview"), nativeIcon);
++              else if (name == QStringLiteral("emblem-symbolic-link"))
++                nativeIcon = QIcon::fromTheme(QStringLiteral("insert-link"), nativeIcon);
++            }
++            QPixmap px = getPixmapFromIcon(nativeIcon, getIconMode(state,isInactive,lspec), iconstate, iconSize);
++            if (menu && !px.isNull())
++            {
++              QPainter iconPainter(&px);
++              iconPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
++              iconPainter.fillRect(px.rect(), QColor(255, 255, 255, state == 0 ? 110 : 255));
++            }
+@@ -6053,2 +6218,18 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
-+            const QPointF center = o.rect.center();
++            const QPointF center = o.rect.center() + QPointF(rtl ? 2.0 : -2.0, 0.0);
 +            const qreal direction = rtl ? -1.0 : 1.0;
 +            QPainterPath chevron;
 +            chevron.moveTo(center.x() - direction * 1.5, center.y() - 3.0);
 +            chevron.lineTo(center.x() + direction * 1.5, center.y());
 +            chevron.lineTo(center.x() - direction * 1.5, center.y() + 3.0);
-+            QPen pen((o.state & State_Enabled) ? QColor(245, 242, 247, 230)
-+                                                : QColor(200, 194, 204, 120));
++            QPen pen((o.state & State_Enabled) ? QColor(255, 255, 255, 255)
++                                                : QColor(255, 255, 255, 110));
 +            pen.setWidthF(1.4);
 +            pen.setCapStyle(Qt::RoundCap);
 +            pen.setJoinStyle(Qt::RoundJoin);
@@ -183,7 +203,7 @@
 +            painter->setBrush(Qt::NoBrush);
 +            painter->drawPath(chevron);
 +            painter->restore();
-@@ -6069 +6233,24 @@
+@@ -6069 +6250,24 @@
 -            if (opt->checkType == QStyleOptionMenuItem::Exclusive
 +            if (menu)
 +            {
@@ -195,8 +215,8 @@
 +                tick.moveTo(center.x() - 3.5, center.y());
 +                tick.lineTo(center.x() - 1.0, center.y() + 2.5);
 +                tick.lineTo(center.x() + 4.0, center.y() - 3.5);
-+                QPen tickPen((o.state & State_Enabled) ? QColor(245, 242, 247, 230)
-+                                                        : QColor(200, 194, 204, 120));
++                QPen tickPen((o.state & State_Enabled) ? QColor(255, 255, 255, 255)
++                                                        : QColor(255, 255, 255, 110));
 +                tickPen.setWidthF(1.3);
 +                tickPen.setCapStyle(Qt::RoundCap);
 +                tickPen.setJoinStyle(Qt::RoundJoin);
@@ -209,12 +229,12 @@
 +              }
 +            }
 +            else if (opt->checkType == QStyleOptionMenuItem::Exclusive
-@@ -6083,0 +6271 @@
+@@ -6083,0 +6288 @@
 +          painter->restore();
-@@ -13228,0 +13417,2 @@
+@@ -13228,0 +13434,2 @@
 +      if (metric == PM_MenuVMargin && qobject_cast<const QMenu*>(widget))
 +        return getMenuMargin(false) + 5;
-@@ -14445 +14635,6 @@
+@@ -14445 +14652,6 @@
 -        const label_spec lspec = getLabelSpec(group);
 +        label_spec lspec = getLabelSpec(group);
 +        if (const QMenu *menu = qobject_cast<const QMenu*>(widget); menu && !menuParent(menu, false))
@@ -222,17 +242,17 @@
 +          if (option->direction == Qt::RightToLeft) { lspec.right += 9; lspec.left += 1; }
 +          else { lspec.left += 9; lspec.right += 1; }
 +        }
-@@ -14487 +14682,2 @@
+@@ -14487 +14699,2 @@
 -          s = QSize(contentsSize.width(), tspec_.menu_separator_height);
 +          s = QSize(contentsSize.width(), tspec_.menu_separator_height
 +                    + (qobject_cast<const QMenu*>(widget) ? 1 : 0));
-@@ -14518 +14714,4 @@
+@@ -14518 +14731,4 @@
 -          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
 +          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
 +          // Preserve the application's font and combo/QML menu geometry.
 +          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
 +          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + textPadding));
-@@ -14548 +14747 @@
+@@ -14548 +14764 @@
 -          s.rwidth() += iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
 --- a/Kvantum/style/polishing.cpp
