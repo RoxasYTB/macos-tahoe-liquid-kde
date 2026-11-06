@@ -59,15 +59,14 @@
 +        painter->drawRoundedRect(edge, 9.5, 9.5);
 +        painter->restore();
 +      }
-@@ -5782,0 +5838,36 @@
+@@ -5782,0 +5838,35 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
 +        const QMenu *parentMenu = menuParent(menu);
 +        const bool isSubmenu = parentMenu != nullptr;
 +        const QRect itemGlobal = menu
 +            ? QRect(menu->mapToGlobal(option->rect.topLeft()), option->rect.size())
 +            : QRect();
-+        const bool pointerHover = (option->state & State_MouseOver)
-+            || (menu != nullptr && itemGlobal.contains(QCursor::pos()));
++        const bool pointerHover = menu != nullptr && itemGlobal.contains(QCursor::pos());
 +        if (isSubmenu && pointerHover && parentMenu != nullptr)
 +        {
 +          for (QAction *parentAction : parentMenu->actions())
@@ -80,7 +79,7 @@
 +          }
 +        }
 +        bool openSubmenuRow = false;
-+        if (menu != nullptr && !isSubmenu)
++        if (menu != nullptr)
 +        {
 +          for (QAction *action : menu->actions())
 +          {
@@ -96,14 +95,13 @@
 +        }
 +        if (openSubmenuRow)
 +          status = KL1("normal");
-@@ -5783,0 +5875,22 @@
-+        const bool tahoeChildSelection =
-+            isSubmenu
+@@ -5783,0 +5874,21 @@
++        const bool tahoeNativeSelection =
++            menu != nullptr && !openSubmenuRow
 +            && opt->menuItemType != QStyleOptionMenuItem::Separator
-+            && opt->menuItemType != QStyleOptionMenuItem::SubMenu
 +            && (option->state & State_Enabled)
 +            && (option->state & State_Selected);
-+        if (tahoeChildSelection)
++        if (tahoeNativeSelection)
 +        {
 +          QRect selectionRect = option->rect.adjusted(5, 0, -5, 0);
 +          const QColor selectionColor = pointerHover
@@ -119,13 +117,13 @@
 +          painter->restore();
 +          status = KL1("normal");
 +        }
-@@ -5788,0 +5902,5 @@
+@@ -5788,0 +5900,5 @@
 +        if (menu && !menuParent(menu, false))
 +        {
 +          if (option->direction == Qt::RightToLeft) lspec.right += 9;
 +          else lspec.left += 9;
 +        }
-@@ -5798 +5916,19 @@
+@@ -5798 +5914,19 @@
 -          renderElement(painter,dspec.element+"-separator",option->rect);
 +        {
 +          if (menu)
@@ -146,25 +144,25 @@
 +          else
 +            renderElement(painter,dspec.element+"-separator",option->rect);
 +        }
-@@ -5821,0 +5958,14 @@
-+          if (openSubmenuRow)
+@@ -5821,0 +5956,14 @@
++          if (openSubmenuRow && (option->state & State_Enabled))
 +          {
 +            const QRect highlightRect = option->rect.adjusted(5, 0, -5, 0);
 +            QPainterPath highlightPath;
-+            highlightPath.addRoundedRect(highlightRect, 7.0, 7.0);
++            highlightPath.addRoundedRect(highlightRect, pointerHover ? 6.0 : 7.0, pointerHover ? 6.0 : 7.0);
 +            painter->save();
 +            painter->setRenderHint(QPainter::Antialiasing, true);
-+            painter->fillPath(highlightPath, QColor(160, 112, 125, 140));
++            painter->fillPath(highlightPath, pointerHover ? QColor(85, 111, 196) : QColor(148, 110, 131, 140));
 +            painter->restore();
 +          }
 +
 +          painter->save();
 +          if (menu)
 +            painter->translate(option->direction == Qt::RightToLeft ? 1 : -1, 0);
-@@ -5897 +6047 @@
+@@ -5897 +6045 @@
 -            checkSpace = iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +            checkSpace = iw + (menu ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
-@@ -6053,2 +6203,18 @@
+@@ -6053,2 +6201,18 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
@@ -185,7 +183,7 @@
 +            painter->setBrush(Qt::NoBrush);
 +            painter->drawPath(chevron);
 +            painter->restore();
-@@ -6069 +6235,24 @@
+@@ -6069 +6233,24 @@
 -            if (opt->checkType == QStyleOptionMenuItem::Exclusive
 +            if (menu)
 +            {
@@ -211,12 +209,12 @@
 +              }
 +            }
 +            else if (opt->checkType == QStyleOptionMenuItem::Exclusive
-@@ -6083,0 +6273 @@
+@@ -6083,0 +6271 @@
 +          painter->restore();
-@@ -13228,0 +13419,2 @@
+@@ -13228,0 +13417,2 @@
 +      if (metric == PM_MenuVMargin && qobject_cast<const QMenu*>(widget))
 +        return getMenuMargin(false) + 5;
-@@ -14445 +14637,6 @@
+@@ -14445 +14635,6 @@
 -        const label_spec lspec = getLabelSpec(group);
 +        label_spec lspec = getLabelSpec(group);
 +        if (const QMenu *menu = qobject_cast<const QMenu*>(widget); menu && !menuParent(menu, false))
@@ -224,17 +222,17 @@
 +          if (option->direction == Qt::RightToLeft) { lspec.right += 9; lspec.left += 1; }
 +          else { lspec.left += 9; lspec.right += 1; }
 +        }
-@@ -14487 +14684,2 @@
+@@ -14487 +14682,2 @@
 -          s = QSize(contentsSize.width(), tspec_.menu_separator_height);
 +          s = QSize(contentsSize.width(), tspec_.menu_separator_height
 +                    + (qobject_cast<const QMenu*>(widget) ? 1 : 0));
-@@ -14518 +14716,4 @@
+@@ -14518 +14714,4 @@
 -          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
 +          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
 +          // Preserve the application's font and combo/QML menu geometry.
 +          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
 +          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + textPadding));
-@@ -14548 +14749 @@
+@@ -14548 +14747 @@
 -          s.rwidth() += iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
 --- a/Kvantum/style/polishing.cpp

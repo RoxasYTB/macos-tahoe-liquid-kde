@@ -828,3 +828,33 @@ Plasma menus and changing foreground backing. Archive-plus-patch reproduces
 compiled BlurHelper exactly. Kvantum builds; targeted checks: 32 passed,
 28 skipped. Wayland shadow rendering is not qualified by these X11 checks.
 No active desktop setting or process was changed.
+
+### 2026-11-06: pointer-driven parent and child selection states
+
+Use actual pointer containment for native rows rather than Qt's potentially
+stale State_MouseOver. An open submenu's parent is blue while the pointer is on
+that row, and returns to its mauve retained-selection fill when the pointer
+enters the child. Apply native leaf selection consistently in roots and children;
+open-parent detection also handles nested menus. Disabled/unselected rows do
+not gain a fill. Combo/QML paths retain the stock renderer.
+
+The retained parent fill is calibrated to (148,110,131,140), preserving its alpha.
+In the text-free reference strip x425..505/y311..329, MAE falls from 3.6745 to
+0.3477. Both pointer-blue fills remain opaque (85,111,196). Root/child selected
+rows share the fixed native six-pixel contour; inactive parent rounding stays
+seven pixels, independent of theme frame.expansion. The former expansion test
+now verifies that intended fixed contour plus unchanged geometry at all scales.
+
+Exact-source X11 evidence: `/tmp/tahoe-menu-native-hover-verified-20261106/`.
+`parent-pointer.png` samples blue at (480,320); `child-return.png` samples blue
+at (650,414), with the parent mauve again. The returned aligned crop is
+pixel-identical to the initial child-hover capture. Genuine Plasma menus and
+changing live backing are captured in the same session.
+
+The compiled-engine regression checks root parent blue, inactive parent mauve
+even with stale State_MouseOver, root leaf blue, and disabled/unselected rows.
+Offscreen menus are deliberately non-overlapping. Translucent RGB checks allow
+one level of premultiplied quantization while alpha is exact. The prior binary
+fails the new root-pointer-blue check; the final binary passes. Build succeeds,
+archive patch reproduces the source, and targeted checks finish 32 passed,
+28 skipped. No active desktop configuration or processes were changed.

@@ -11,7 +11,7 @@ import pytest
 
 @pytest.mark.parametrize("mode", ["", "Dark"])
 @pytest.mark.parametrize("scale", ["1", "1.5", "2"])
-def test_native_rounding_preserves_menu_geometry(repo, tmp_path, mode, scale):
+def test_native_rounding_ignores_theme_frame_expansion(repo, tmp_path, mode, scale):
     pytest.importorskip("PyQt6.QtWidgets")
     results = []
     for expansion in (0, 12):
@@ -42,7 +42,9 @@ def test_native_rounding_preserves_menu_geometry(repo, tmp_path, mode, scale):
     before, after = results
     assert after["geometry"] == before["geometry"]
     assert after["size"] == before["size"]
-    assert after["top_inset"] > before["top_inset"]
+    # Native rows now share a fixed contour across root/child roles.
+    assert after["top_inset"] == before["top_inset"]
+    assert after["top_inset"] > 0
     assert after["center"] == before["center"]
     # The dark profile intentionally uses a translucent selected fill. Verify
     # that the rounded center is painted, without requiring an opaque pixel.
@@ -117,6 +119,7 @@ def _check_native_selection_states(root, child, app):
     from PyQt6.QtWidgets import QStyle, QStyleOptionMenuItem
     root.show()
     child.setFixedSize(180, 80)
+    child.move(root.mapToGlobal(QPoint(root.width() + 20, 0)))
     child.show()
     app.processEvents()
     option = QStyleOptionMenuItem()
@@ -128,22 +131,47 @@ def _check_native_selection_states(root, child, app):
     QCursor.setPos(pointer)
     assert QCursor.pos() == pointer
 
-    def center(state):
+    def center(state, widget=child, rect=None, submenu=False):
+        option.initFrom(widget)
+        option.menuItemType = (QStyleOptionMenuItem.MenuItemType.SubMenu if submenu
+                               else QStyleOptionMenuItem.MenuItemType.Normal)
+        option.rect = QRect(0, 0, 160, 24) if rect is None else rect
         option.state = state
-        image = QImage(160, 24, QImage.Format.Format_ARGB32_Premultiplied)
+        image = QImage(180, 40, QImage.Format.Format_ARGB32_Premultiplied)
         image.fill(QColor(0, 0, 0, 0))
         painter = QPainter(image)
-        child.style().drawControl(QStyle.ControlElement.CE_MenuItem, option, painter, child)
+        painter.translate(-option.rect.left(), -option.rect.top())
+        widget.style().drawControl(QStyle.ControlElement.CE_MenuItem, option, painter, widget)
         painter.end()
-        return image.pixelColor(80, 12)
+        return image.pixelColor(min(80, option.rect.width() // 2), option.rect.height() // 2)
 
     enabled = QStyle.StateFlag.State_Enabled
     selected = QStyle.StateFlag.State_Selected
+    stale_hover = QStyle.StateFlag.State_MouseOver
+    blue = QColor(85, 111, 196)
     # Keyboard selection must not leave the old pointer row highlighted.
     assert center(enabled).alpha() == 0
     # Disabled actions must remain visually disabled even if marked selected.
     assert center(selected).alpha() == 0
-    assert center(enabled | selected).alpha() > 0
+    assert center(enabled | selected) == blue
+
+    parent_rect = root.actionGeometry(child.menuAction())
+    QCursor.setPos(root.mapToGlobal(parent_rect.center()))
+    assert center(enabled | selected, root, parent_rect, True) == blue
+    QCursor.setPos(pointer)
+    # Qt can leave State_MouseOver on the parent while its child has the pointer.
+    inactive = center(enabled | selected | stale_hover, root, parent_rect, True)
+    # Premultiplied storage can round translucent RGB channels by one level.
+    assert inactive.alpha() == 140
+    assert max(abs(actual - expected) for actual, expected in
+               zip(inactive.getRgb()[:3], (148, 110, 131))) <= 1
+
+    child.hide()
+    leaf_rect = QRect(0, 0, 160, 24)
+    QCursor.setPos(root.mapToGlobal(leaf_rect.center()))
+    assert center(enabled | selected, root, leaf_rect) == blue
+    assert center(enabled, root, leaf_rect).alpha() == 0
+    assert center(selected, root, leaf_rect).alpha() == 0
     child.hide()
     root.hide()
 
