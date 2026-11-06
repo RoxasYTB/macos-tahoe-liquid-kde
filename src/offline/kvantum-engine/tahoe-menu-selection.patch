@@ -31,7 +31,7 @@
 +      // excludes the transparent shadow, not that interior breathing room.
 +      if (qobject_cast<const QMenu*>(widget))
 +        fspec.top = fspec.bottom = qMax(0, fspec.top - 5);
-@@ -3286,0 +3315,27 @@
+@@ -3286,0 +3315,29 @@
 +      // Match Aurorae's one-pixel, 12% white application-window edge.
 +      if (widget && qobject_cast<const QMenu*>(widget))
 +      {
@@ -40,8 +40,10 @@
 +        {
 +          QWidget *menu = const_cast<QWidget*>(widget);
 +          blurHelper_->registerWidget(menu);
-+          if (menu->property("_kvantum_menu_surface").toRect() != menuSurface)
-+            menu->setProperty("_kvantum_menu_surface", menuSurface);
++          // Keep the dark keyline outside the refractive glass plane.
++          const QRect glassSurface = menuSurface.adjusted(1, 0, -1, 0);
++          if (menu->property("_kvantum_menu_surface").toRect() != glassSurface)
++            menu->setProperty("_kvantum_menu_surface", glassSurface);
 +        }
 +        const QRectF edge = QRectF(menuSurface).adjusted(1.5, 0.5, -1.5, -0.5);
 +        painter->save();
@@ -50,16 +52,16 @@
 +        edgePen.setWidthF(1.0);
 +        painter->setPen(edgePen);
 +        painter->setBrush(Qt::NoBrush);
-+        painter->drawRoundedRect(edge.adjusted(-1.0, -1.0, 1.0, 1.0), 10.5, 10.5);
-+        // Replace the veil at the rim instead of darkening its live backing.
++        // Both keylines replace the veil rather than accumulating its opacity.
 +        if (isTranslucent)
 +          painter->setCompositionMode(QPainter::CompositionMode_Source);
++        painter->drawRoundedRect(edge.adjusted(-1.0, -1.0, 1.0, 1.0), 10.5, 10.5);
 +        edgePen.setColor(QColor(255, 255, 255, 31));
 +        painter->setPen(edgePen);
 +        painter->drawRoundedRect(edge, 9.5, 9.5);
 +        painter->restore();
 +      }
-@@ -5782,0 +5838,35 @@
+@@ -5782,0 +5840,35 @@
 +        const QMenu *menu = qobject_cast<const QMenu*>(widget);
 +        const QMenu *parentMenu = menuParent(menu);
 +        const bool isSubmenu = parentMenu != nullptr;
@@ -95,7 +97,7 @@
 +        }
 +        if (openSubmenuRow)
 +          status = KL1("normal");
-@@ -5783,0 +5874,21 @@
+@@ -5783,0 +5876,21 @@
 +        const bool tahoeNativeSelection =
 +            menu != nullptr && !openSubmenuRow
 +            && opt->menuItemType != QStyleOptionMenuItem::Separator
@@ -117,7 +119,7 @@
 +          painter->restore();
 +          status = KL1("normal");
 +        }
-@@ -5788,0 +5900,10 @@
+@@ -5788,0 +5902,10 @@
 +        if (menu && (option->state & State_Enabled))
 +        {
 +          const bool blueSelection = pointerHover && (openSubmenuRow || (option->state & State_Selected));
@@ -128,7 +130,7 @@
 +          if (option->direction == Qt::RightToLeft) lspec.right += 9;
 +          else lspec.left += 9;
 +        }
-@@ -5798 +5919,19 @@
+@@ -5798 +5921,19 @@
 -          renderElement(painter,dspec.element+"-separator",option->rect);
 +        {
 +          if (menu)
@@ -149,7 +151,7 @@
 +          else
 +            renderElement(painter,dspec.element+"-separator",option->rect);
 +        }
-@@ -5821,0 +5961,14 @@
+@@ -5821,0 +5963,14 @@
 +          if (openSubmenuRow && (option->state & State_Enabled))
 +          {
 +            const QRect highlightRect = option->rect.adjusted(5, 0, -5, 0);
@@ -164,10 +166,10 @@
 +          painter->save();
 +          if (menu)
 +            painter->translate(option->direction == Qt::RightToLeft ? 1 : -1, 0);
-@@ -5897 +6050 @@
+@@ -5897 +6052 @@
 -            checkSpace = iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +            checkSpace = iw + (menu ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
-@@ -5953 +6106,18 @@
+@@ -5953 +6108,18 @@
 -            QPixmap px = getPixmapFromIcon(opt->icon, getIconMode(state,isInactive,lspec), iconstate, iconSize);
 +            QIcon nativeIcon = opt->icon;
 +            if (menu)
@@ -187,7 +189,7 @@
 +              iconPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
 +              iconPainter.fillRect(px.rect(), QColor(255, 255, 255, state == 0 ? 110 : 255));
 +            }
-@@ -6053,2 +6223,18 @@
+@@ -6053,2 +6225,18 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
@@ -208,7 +210,7 @@
 +            painter->setBrush(Qt::NoBrush);
 +            painter->drawPath(chevron);
 +            painter->restore();
-@@ -6069 +6255,24 @@
+@@ -6069 +6257,24 @@
 -            if (opt->checkType == QStyleOptionMenuItem::Exclusive
 +            if (menu)
 +            {
@@ -234,12 +236,12 @@
 +              }
 +            }
 +            else if (opt->checkType == QStyleOptionMenuItem::Exclusive
-@@ -6083,0 +6293 @@
+@@ -6083,0 +6295 @@
 +          painter->restore();
-@@ -13228,0 +13439,2 @@
+@@ -13228,0 +13441,2 @@
 +      if (metric == PM_MenuVMargin && qobject_cast<const QMenu*>(widget))
 +        return getMenuMargin(false) + 5;
-@@ -14445 +14657,6 @@
+@@ -14445 +14659,6 @@
 -        const label_spec lspec = getLabelSpec(group);
 +        label_spec lspec = getLabelSpec(group);
 +        if (const QMenu *menu = qobject_cast<const QMenu*>(widget); menu && !menuParent(menu, false))
@@ -247,17 +249,17 @@
 +          if (option->direction == Qt::RightToLeft) { lspec.right += 9; lspec.left += 1; }
 +          else { lspec.left += 9; lspec.right += 1; }
 +        }
-@@ -14487 +14704,2 @@
+@@ -14487 +14706,2 @@
 -          s = QSize(contentsSize.width(), tspec_.menu_separator_height);
 +          s = QSize(contentsSize.width(), tspec_.menu_separator_height
 +                    + (qobject_cast<const QMenu*>(widget) ? 1 : 0));
-@@ -14518 +14736,4 @@
+@@ -14518 +14738,4 @@
 -          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
 +          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
 +          // Preserve the application's font and combo/QML menu geometry.
 +          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
 +          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + textPadding));
-@@ -14548 +14769 @@
+@@ -14548 +14771 @@
 -          s.rwidth() += iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
 --- a/Kvantum/style/polishing.cpp
@@ -280,7 +282,7 @@
 +// Compositor-owned tiles extend beyond QMenu's transparent client margins.
 +static void updateNativeMenuShadow(QWidget *widget, QWindow *window)
 +{
-+  const QRect surface = widget->property("_kvantum_menu_surface").toRect().adjusted(0, -1, 0, 1);
++  const QRect surface = widget->property("_kvantum_menu_surface").toRect().adjusted(-1, -1, 1, 1);
 +  if (!qobject_cast<QMenu*>(widget) || surface.isEmpty()) return;
 +  const QString name = QStringLiteral("_kvantum_menu_shadow");
 +  const qreal scale = QGuiApplication::platformName() == QStringLiteral("xcb")

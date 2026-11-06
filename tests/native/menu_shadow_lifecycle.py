@@ -32,7 +32,7 @@ def created(stage):
     assert '(CARDINAL)' in data, data
     values = [int(value.strip()) for value in data.split('=', 1)[1].split(',')]
     assert len(values) == 12 and all(values[:8]), data
-    surface = menu.property('_kvantum_menu_surface').adjusted(0, -1, 0, 1)
+    surface = menu.property('_kvantum_menu_surface').adjusted(-1, -1, 1, 1)
     assert shadow.property('surface') == surface
     scale = window.devicePixelRatio()
     assert shadow.property('scale') == scale

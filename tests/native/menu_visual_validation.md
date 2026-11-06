@@ -898,3 +898,21 @@ not comparable to the material-only MAE. The session also captures genuine
 Plasma menus, pointer transitions and changing backing. Kvantum builds;
 archive-plus-patch reproduces the compiled source. Targeted checks finish
 32 passed, 28 skipped. No active desktop settings or fonts were changed.
+
+### 2026-11-06: separate the keyline from the refractive plane
+
+The native blur region now excludes the vertical dark keylines. Both keylines
+replace the client veil with Source composition, avoiding accumulated veil+
+black opacity. Painted menu geometry is unchanged. Shadow alignment expands
+from the inner glass plane back to the same exterior contour; the native
+lifecycle probe follows that coordinate definition.
+
+Exact-source evidence: `/tmp/tahoe-menu-native-keyline-plane-20261106/`.
+Parent left/right keyline-strip MAE drops 8.2606 -> 2.4939 and
+8.0879 -> 2.3606; child right drops 5.0381 -> 1.8079. Material-only MAE stays
+stable (1.7082 -> 1.6975). A representative left black pixel changes from
+(14,3,10) to (26,12,21), versus reference (23,10,18). These are local metrics,
+not whole-interface identity. Shadow creation/removal/recreation/resize probes
+pass at scale 1, 1.5 and 2 with unchanged exterior paddings. Build and archive
+reapplication succeed; targeted checks: 32 passed, 28 skipped. Native Plasma
+menus and changing backing remain captured in the same private session.
