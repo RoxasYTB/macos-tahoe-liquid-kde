@@ -8,7 +8,7 @@
   <group name="General">
     <entry name="showOnlyCurrentScreen" type="Bool">
       <label>Whether to show only window tasks that are on the same screen as the widget.</label>
-      <default>false</default>
+      <default>true</default>
     </entry>
     <entry name="showOnlyCurrentDesktop" type="Bool">
       <label>Whether to only show tasks that are on the current virtual desktop.</label>

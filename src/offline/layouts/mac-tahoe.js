@@ -5,20 +5,6 @@
 
 // ── remove existing panels ──────────────────────
 var old = panels();
-var launcherPresets = {};
-for (var p = 0; p < old.length; p++) {
-    var widgets = old[p].widgetIds;
-    for (var w = 0; w < widgets.length; w++) {
-        var widget = old[p].widgetById(widgets[w]);
-        if (widget && widget.type === "org.kde.mac-tahoe-liquid-kde.launcher") {
-            widget.currentConfigGroup = ["General"];
-            var preset = Number(widget.readConfig("launcherPreset", 0));
-            if (preset === 1 || preset === 2) {
-                launcherPresets[old[p].screen] = preset;
-            }
-        }
-    }
-}
 for (var i = 0; i < old.length; i++) {
     old[i].remove();
 }
@@ -61,8 +47,8 @@ for (var screen = 0; screen < screenCount; screen++) {
     tray.currentConfigGroup = ["General"];
 
     // shown = always visible, hidden = inside arrow, auto = KDE decides
-    tray.writeConfig("shownItems", "org.kde.plasma.bluetooth,org.kde.plasma.networkmanagement,org.kde.plasma.brightness,org.kde.plasma.volume");
-    tray.writeConfig("hiddenItems", "org.kde.plasma.clipboard,org.kde.plasma.devicenotifier,org.kde.plasma.manage-inputmethod,org.kde.plasma.mediacontroller,org.kde.plasma.notifications,org.kde.plasma.keyboardindicator,org.kde.plasma.weather,org.kde.kscreen,org.kde.plasma.keyboardlayout,org.kde.plasma.printmanager,org.kde.plasma.cameraindicator,org.kde.plasma.vault,org.kde.kdeconnect,org.kde.plasma.battery,Arch-Update,chrome_status_icon_1,discord,plasmashell_microphone,steam,spotify,telegram,slack");
+    tray.writeConfig("shownItems", "org.kde.plasma.bluetooth,org.kde.plasma.networkmanagement,org.kde.plasma.brightness,org.kde.plasma.volume,org.kde.plasma.notifications,org.kde.plasma.mediacontroller,chrome_status_icon_1,discord,steam,spotify");
+    tray.writeConfig("hiddenItems", "org.kde.plasma.clipboard,org.kde.plasma.devicenotifier,org.kde.plasma.manage-inputmethod,org.kde.plasma.keyboardindicator,org.kde.plasma.weather,org.kde.kscreen,org.kde.plasma.keyboardlayout,org.kde.plasma.printmanager,org.kde.plasma.cameraindicator,org.kde.plasma.vault,org.kde.kdeconnect,org.kde.plasma.battery,Arch-Update,plasmashell_microphone,telegram,slack");
     tray.writeConfig("iconSpacing", 3);
 
     var clock = bar.addWidget("org.kde.plasma.digitalclock");
@@ -92,18 +78,9 @@ for (var screen = 0; screen < screenCount; screen++) {
     // opacity is set to translucent via plasmashellrc after layout apply
     // (JS scripting API does not expose panelOpacity)
 
-    var launcher = dock.addWidget("org.kde.mac-tahoe-liquid-kde.launcher");
-    launcher.currentConfigGroup = ["General"];
-    launcher.writeConfig("icon", "view-app-grid");
-    // The installer selects the new edition when migrating between editions.
-    if (typeof mttkdeLauncherPreset !== "undefined"
-            && (mttkdeLauncherPreset === 1 || mttkdeLauncherPreset === 2)) {
-        launcher.writeConfig("launcherPreset", mttkdeLauncherPreset);
-    } else if (launcherPresets[dock.screen] !== undefined) {
-        launcher.writeConfig("launcherPreset", launcherPresets[dock.screen]);
-    }
     var tasks = dock.addWidget("org.kde.mac.tahoe.liquid.icontasks");
     tasks.currentConfigGroup = ["General"];
+    tasks.writeConfig("showOnlyCurrentScreen", true);
     // Filled by layout.py from the user's existing taskbar pins, applied to
     // every dock across every screen (see _append_launcher_restore).
     tasks.writeConfig("launchers", "");

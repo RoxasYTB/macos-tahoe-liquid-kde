@@ -12,7 +12,7 @@ import org.kde.kirigami as Kirigami
 AbstractButton {
     id: controlRoot
 
-    font.weight: Font.DemiBold
+    font.weight: Font.Medium
     property bool menuIsOpen: false
 
     signal activated()
@@ -42,8 +42,8 @@ AbstractButton {
 
     topPadding: Kirigami.Units.smallSpacing + 1
     bottomPadding: Kirigami.Units.smallSpacing - 1
-    leftPadding: Kirigami.Units.largeSpacing
-    rightPadding: Kirigami.Units.largeSpacing
+    leftPadding: Kirigami.Units.largeSpacing - Math.round(Kirigami.Units.smallSpacing / 2)
+    rightPadding: Kirigami.Units.largeSpacing - Math.round(Kirigami.Units.smallSpacing / 2)
 
     Accessible.description: i18nc("@info:usagetip", "Open a menu")
 

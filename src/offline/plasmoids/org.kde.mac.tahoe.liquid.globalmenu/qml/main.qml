@@ -125,8 +125,8 @@ PlasmoidItem {
 
             topPadding: Kirigami.Units.smallSpacing + 1
             bottomPadding: Kirigami.Units.smallSpacing - 1
-            leftPadding: Kirigami.Units.largeSpacing
-            rightPadding: Kirigami.Units.largeSpacing
+            leftPadding: Kirigami.Units.largeSpacing - Math.round(Kirigami.Units.smallSpacing / 2)
+            rightPadding: Kirigami.Units.largeSpacing - Math.round(Kirigami.Units.smallSpacing / 2)
 
             hoverEnabled: true
             onHoveredChanged: if (hovered && menuIsOpen) { Plasmoid.triggerSystemMenu(this); }
