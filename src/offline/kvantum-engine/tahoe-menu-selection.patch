@@ -218,7 +218,7 @@
 +              if (opt->checked)
 +              {
 +                QPointF center = o.rect.center();
-+                center += QPointF(rtl ? 2.0 : -2.0, 2.0);
++                center += QPointF(0.0, 2.0);
 +                QPainterPath tick;
 +                tick.moveTo(center.x() - 3.5, center.y());
 +                tick.lineTo(center.x() - 1.0, center.y() + 2.5);

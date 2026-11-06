@@ -967,3 +967,14 @@ targeted checks finish 32 passed, 28 skipped. Shadow lifecycle probes also pass
 at all three scales. No active desktop settings/processes were changed and no
 pull request was opened. The comparison still includes content-icon and glyph
 raster differences; matching frame/selection bounds is not full-image identity.
+
+### 2026-11-06: align the submenu checkmark
+
+Move the checked-item tick two pixels down without shifting its horizontal
+center. In the supplied 800x484 side-by-side comparison, KDE had the tick too
+far left; the exact-source private Plasma capture now places it at x543..550,
+matching the macOS reference at x543..551. Vertical ink bounds differ by one
+pixel (reference y316..324, KDE y317..323). The native menu geometry, selected
+row and QAction behavior are unchanged.
+
+Exact-source capture: `/tmp/tahoe-menu-checkmark-final0-20261106/desktop-context-menu-submenu.png`.
