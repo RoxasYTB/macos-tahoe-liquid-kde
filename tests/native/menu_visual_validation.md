@@ -654,3 +654,38 @@ Qt fixture uses locally hand-drawn test pictograms, not the actual KDE icon
 pack: their mismatch must not be attributed to the installed icon theme. The
 real Plasma captures remain authoritative for native actions and their icons.
 No active desktop settings were changed.
+
+### 2026-11-06: preserve live backing beneath the inner rim
+
+The native translucent menu painted its 12% white rim over the 50% black
+client veil. This suppressed both contrast and the compositor's chromatic
+backing. Paint that one-pixel stroke with CompositionMode_Source instead:
+its RGB/alpha replace the veil locally. The white alpha stays 31/255, matching
+the application edge; there is no fixed colored border. Opaque/non-composited
+menus retain SourceOver. The adjacent dark keyline is 217/255 for translucent
+menus and retains 31/255 for opaque menus. Save/restore contains the painter
+composition change. Actions, interior material and menu geometry are unchanged.
+
+The isolated comparison shows narrow-strip RGB MAE changes (previous -> new):
+parent left 25.2056 -> 7.7794; parent upper 34.7275 -> 4.8517; child right
+24.8986 -> 10.8559; child upper 33.2056 -> 6.9983. These exclude most menu
+pixels and do not establish full-interface pixel identity. At a representative
+parent edge pixel (331,210), reference RGB is (211,77,170), previous KDE
+(119,53,95), and corrected KDE (207,75,159).
+
+Evidence before the opaque-path guard: `/tmp/tahoe-menu-native-clear-rim-20261105/`.
+A real Plasma Create New menu and native child remain live over a separately
+changing blue/gray foreground: sampled parent/child regions change at 42,728 /
+24,461 pixels above eight levels, with median gray chroma zero. Final exact-source
+capture is `/tmp/tahoe-menu-native-clear-rim-verified-20261106/`.
+
+A separate 27-render optics batch tested widths 16/32/56, lens strengths
+0/0.125/0.25, and highlight strengths 0.14/0.5/1. Its masked material-edge
+score improves only slightly with width 16 (3.4061 versus 3.4654 at width 56);
+stronger highlights do not solve the suppressed client rim. Those experimental
+settings were not applied to the active desktop or committed as new defaults.
+
+The final guarded source builds successfully and produces a zero maximum pixel
+change in the aligned menu crop compared with the accepted translucent-path
+capture. Archive-plus-patch reapplication matches the compiled source. Targeted
+compiled-engine checks: 32 passed, 28 skipped. No PR or active-session change.
