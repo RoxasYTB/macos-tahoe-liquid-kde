@@ -1006,9 +1006,16 @@ void BlurEffect::prePaintWindow(RenderView* view, EffectWindow* w, WindowPrePain
         // 3. EXPAND PAINT REGION: Pull in pixels from slightly outside
         // the visible bounds so refraction / Kawase taps near the rim
         // sample real content, not whatever was left in the buffer.
+        const bool nativeMenuBlur = (w->isMenu() || w->isDropdownMenu() || w->isPopupMenu())
+            && BlurConfig::materialPreset() == 1 && m_offset > 0.0f
+            && BlurConfig::blurStrength() < 8.0;
+        auto menuBlur = blurStrengthValues[std::min(qsizetype(7), blurStrengthValues.size() - 1)];
+        menuBlur.iteration = blurStrengthValues[std::min(qsizetype(8), blurStrengthValues.size() - 1)].iteration;
+        const int expandSize = nativeMenuBlur
+            ? std::max(m_expandSize, blurOffsets[menuBlur.iteration - 1].expandSize) : m_expandSize;
         Region expandedBlur = blurArea;
         for (const Rect& rect : blurArea.rects()) {
-            expandedBlur += rect.adjusted(-m_expandSize, -m_expandSize, m_expandSize, m_expandSize);
+            expandedBlur += rect.adjusted(-expandSize, -expandSize, expandSize, expandSize);
         }
 
         // Ensure the compositor actually paints the background we need to sample.
@@ -1227,9 +1234,18 @@ void BlurEffect::blur(
     // leaking a sharp image through the centre of the blurred material.
     const bool dockSurface = w->isDock();
     const float centerOpacity = dockSurface ? 0.98f : 1.0f;
-    const size_t iterationCount = dockSurface ? std::min(size_t(3), m_iterationCount) : m_iterationCount;
-    const bool nativeResolutionBlur = !dockSurface && m_nativeResolutionBlur;
-    const float blurOffset = dockSurface ? m_dockOffset : m_offset;
+    // Small Tahoe menus need a compact pyramid to soften backing detail;
+    // the source-resolution application blur otherwise leaves it legible.
+    // Preserve explicit no-blur and stronger user settings.
+    const bool nativeMenuBlur = (w->isMenu() || w->isDropdownMenu() || w->isPopupMenu())
+        && BlurConfig::materialPreset() == 1 && m_offset > 0.0f
+        && BlurConfig::blurStrength() < 8.0;
+    auto menuBlur = blurStrengthValues[std::min(qsizetype(7), blurStrengthValues.size() - 1)];
+    menuBlur.iteration = blurStrengthValues[std::min(qsizetype(8), blurStrengthValues.size() - 1)].iteration;
+    const size_t iterationCount = nativeMenuBlur ? menuBlur.iteration
+        : dockSurface ? std::min(size_t(3), m_iterationCount) : m_iterationCount;
+    const bool nativeResolutionBlur = !dockSurface && !nativeMenuBlur && m_nativeResolutionBlur;
+    const float blurOffset = nativeMenuBlur ? menuBlur.offset : dockSurface ? m_dockOffset : m_offset;
 
     // 2. Effective blur shape
     // If the window is transformed (scaled / translated by an effect such

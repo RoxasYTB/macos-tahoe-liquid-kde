@@ -720,3 +720,31 @@ engine and X11 effect build, and reapplying the archive patch reproduces the
 compiled Kvantum/polish sources. Final targeted checks: 32 passed, 28 skipped.
 No active desktop configuration or process was changed. Pixel-perfect glyph
 rasterization and the full optical field remain unproven by these checks.
+
+### 2026-11-06: soften native menu backing without darkening the material
+
+Eight isolated blur variants (0, 0.5, 1, 2, 3, 4, 6, 8) showed that the flat
+native pane needed a compact pyramid instead of the application's near-sharp
+source-resolution blur. The level-8 variant reduced sampled material-edge MAE
+from 4.3899 to 3.3668 and interior MAE from 4.1280 to 3.1680. This is a masked
+optical comparison, not a whole-interface score.
+
+When Tahoe native menus have enabled blur below level 8, draw with the same
+pyramid count/offset as level 8. Keep the existing source-resolution behavior
+for applications and other popups. Explicit zero blur and settings >=8 use the
+normal configured path. No client opacity, material color or refraction changes.
+Prepaint expansion uses the corresponding pyramid's extent, so backing pixels
+around changing menus are refreshed consistently with the sampling radius.
+
+Exact-source evidence: `/tmp/tahoe-menu-native-material-blur-verified-20261106/`.
+Repeated native-menu captures at configured levels 1, 4 and 8 are pixel-identical
+in the aligned menu crop; zero blur differs by up to 77 levels. The first draft
+used the lower table entry's iteration count and failed this equality check;
+the final decode matches the normal fractional-strength path's upper iteration
+entry and lower offset. `blur-checks.json` records the passing comparison.
+
+Both genuine Plasma menus remain live over blue/gray foreground changes:
+44,212 parent / 24,917 child sampled pixels change above eight levels, with
+median gray chroma one level. Sole active effect is liquidglass. X11 effect
+build succeeds; final targeted checks: 32 passed, 28 skipped. All work remained
+in the private display/config. No active desktop settings or processes changed.
