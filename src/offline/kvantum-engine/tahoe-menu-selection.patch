@@ -134,7 +134,7 @@
 +            const int leading = isSubmenu ? 16 : 18;
 +            const qreal left = option->rect.left() + (rtlSeparator ? 16 : leading);
 +            const qreal right = option->rect.right() - (rtlSeparator ? leading : 16);
-+            const qreal lineY = option->rect.center().y() - 0.5;
++            const qreal lineY = option->rect.center().y() + 0.5;
 +            painter->save();
 +            painter->setRenderHint(QPainter::Antialiasing, true);
 +            QPen separatorPen(QColor(255, 255, 255, 40));
@@ -159,8 +159,8 @@
 +          }
 +
 +          painter->save();
-+          // Keep glyphs aligned while the native action/selection gains top inset.
-+          if (menu) painter->translate(0, -2);
++          if (menu)
++            painter->translate(option->direction == Qt::RightToLeft ? 1 : -1, 0);
 @@ -5897 +6047 @@
 -            checkSpace = iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +            checkSpace = iw + (menu ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
@@ -224,13 +224,17 @@
 +          if (option->direction == Qt::RightToLeft) lspec.right += 9;
 +          else lspec.left += 9;
 +        }
-@@ -14518 +14715,4 @@
+@@ -14487 +14684,2 @@
+-          s = QSize(contentsSize.width(), tspec_.menu_separator_height);
++          s = QSize(contentsSize.width(), tspec_.menu_separator_height
++                    + (qobject_cast<const QMenu*>(widget) ? 1 : 0));
+@@ -14518 +14716,4 @@
 -          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
 +          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
 +          // Preserve the application's font and combo/QML menu geometry.
 +          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
 +          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + textPadding));
-@@ -14548 +14748 @@
+@@ -14548 +14749 @@
 -          s.rwidth() += iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
 --- a/Kvantum/style/polishing.cpp
@@ -239,7 +243,7 @@
 +// Shared native-menu ownership lookup from Kvantum.cpp.
 +const QMenu *menuParent(const QMenu *menu, bool requireVisible);
 +
-@@ -54,0 +58,12 @@
+@@ -54,0 +58,11 @@
 +
 +  if (QMenu *menu = qobject_cast<QMenu*>(widget))
 +  {
@@ -248,11 +252,10 @@
 +    if (!saved.isValid())
 +      menu->setProperty("_kvantum_original_menu_margins", QVariant::fromValue(original));
 +    QMargins margins = original;
-+    margins.setTop(margins.top() + 2);
 +    if (!menuParent(menu, false)) margins.setBottom(margins.bottom() + 1);
 +    menu->setContentsMargins(margins);
 +  }
-@@ -1063,0 +1079,9 @@
+@@ -1063,0 +1078,9 @@
 +    const QVariant savedMenuMargins = widget->property("_kvantum_original_menu_margins");
 +    if (savedMenuMargins.isValid())
 +    {

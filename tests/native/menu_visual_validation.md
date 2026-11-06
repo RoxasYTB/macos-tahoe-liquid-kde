@@ -689,3 +689,34 @@ The final guarded source builds successfully and produces a zero maximum pixel
 change in the aligned menu crop compared with the accepted translucent-path
 capture. Archive-plus-patch reapplication matches the compiled source. Targeted
 compiled-engine checks: 32 passed, 28 skipped. No PR or active-session change.
+
+### 2026-11-06: native flat pane and separator rhythm
+
+Tahoe native-menu refraction is capped at 16 logical pixels (a smaller configured
+width remains respected). The legacy/core shaders fade lens UV displacement and
+lens normal with the same perimeter weight. This removes the global dome from
+native menus while retaining the live bevel, blur and rim. Other materials,
+application windows, Dock and Control Center keep their previous optics.
+
+Native separators gain one logical pixel of height. Remove the compensating
+extra two top contents pixels and the opposite glyph translation; the two
+separators now account for the actual vertical rhythm. Preserve the application
+margin save/restore and root bottom inset. Separator strokes are registered at
+rect.center.y + 0.5. Native glyph painting shifts one logical pixel toward the
+leading edge, mirrored for RTL. Font settings and QML/combo rendering are intact.
+
+Exact-source private evidence: `/tmp/tahoe-menu-native-final-rhythm-20261106/`.
+The nine measured child labels from Snap to Grid through Tags have identical
+leading x/y bounds to the reference, e.g. (557,350), (557,386), (557,409),
+(557,433), through (557,554). Some trailing bounds still differ by one pixel.
+`text-alignment.json` records both sets. Parent/child fixture windows remain
+215x209 and 159x280: the spacing correction does not enlarge these panels.
+The child is manually moved after the recorded geometry as in prior captures.
+
+The session also captures genuine Plasma menus over changing blue/gray backing:
+42,545 parent and 24,925 child sampled pixels change above eight RGB levels;
+median gray chroma is one level in each. Only liquidglass is active. The native
+engine and X11 effect build, and reapplying the archive patch reproduces the
+compiled Kvantum/polish sources. Final targeted checks: 32 passed, 28 skipped.
+No active desktop configuration or process was changed. Pixel-perfect glyph
+rasterization and the full optical field remain unproven by these checks.

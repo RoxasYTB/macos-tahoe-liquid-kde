@@ -1782,7 +1782,12 @@ void BlurEffect::blur(
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.rgbDriftStrengthLocation,
         float(m_rgbDriftStrength * viewport.scale() * (dockSurface ? 0.24f : 1.0f)));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.magnifyGlassStrengthLocation, m_magnifyGlassStrength);
-    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.refractionWidthLocation, float(m_refractionWidth * viewport.scale()));
+    // Native Tahoe menus use a narrow lens at their perimeter; application
+    // window widths otherwise warp much of a small submenu's interior.
+    const float refractionWidth = menuSurface && BlurConfig::materialPreset() == 1
+        ? std::min(m_refractionWidth, 16.0f) : m_refractionWidth;
+    m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.refractionWidthLocation,
+        float(refractionWidth * viewport.scale()));
     m_roundedOnscreenPass.shader->setUniform(m_roundedOnscreenPass.highlightWidthLocation, float(m_highlightWidth * viewport.scale()));
     const QString windowClass = w->window()->resourceClass();
     const QString resourceName = w->window()->resourceName();

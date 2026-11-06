@@ -69,6 +69,11 @@ void main()
     if (lensStrength > 0.0) {
         lensUV = lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize,
                           cornerRadius, cornerSquircle, lensNormal);
+        if (nativeMenuMaterial) {
+            // A native menu is a flat pane with a perimeter bevel, not a dome.
+            lensUV = mix(uv, lensUV, edgeQ);
+            lensNormal = normalize(mix(vec3(0.0, 0.0, 1.0), lensNormal, edgeQ));
+        }
         if (dockSurface) {
             vec2 radial = pos / max(halfSize, vec2(1.0));
             radial /= max(length(radial), 0.001);
