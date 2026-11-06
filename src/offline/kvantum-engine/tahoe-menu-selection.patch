@@ -247,20 +247,102 @@
 +
 --- a/Kvantum/style/blur/blurhelper.cpp
 +++ b/Kvantum/style/blur/blurhelper.cpp
-@@ -175,0 +176,4 @@
+@@ -30,0 +31,4 @@
++#include <KWindowShadow>
++#include <QImage>
++#include <QGuiApplication>
++#include <cmath>
+@@ -33,0 +38,70 @@
++#ifndef NO_KF
++// Compositor-owned tiles extend beyond QMenu's transparent client margins.
++static void updateNativeMenuShadow(QWidget *widget, QWindow *window)
++{
++  const QRect surface = widget->property("_kvantum_menu_surface").toRect().adjusted(0, -1, 0, 1);
++  if (!qobject_cast<QMenu*>(widget) || surface.isEmpty()) return;
++  const QString name = QStringLiteral("_kvantum_menu_shadow");
++  const qreal scale = QGuiApplication::platformName() == QStringLiteral("xcb")
++      ? window->devicePixelRatio() : 1.0;
++  const qulonglong windowId = window->winId();
++  auto *shadow = window->findChild<KWindowShadow*>(name, Qt::FindDirectChildrenOnly);
++  if (shadow && shadow->property("surface").toRect() == surface
++      && shadow->property("scale").toReal() == scale
++      && shadow->property("windowId").toULongLong() == windowId && shadow->isCreated()) return;
++  delete shadow;
++  shadow = new KWindowShadow(window);
++  shadow->setObjectName(name);
++  shadow->setProperty("surface", surface);
++  shadow->setProperty("scale", scale);
++  shadow->setProperty("windowId", windowId);
++  shadow->setWindow(window);
++
++  constexpr int extent = 20;
++  constexpr int corner = 10;
++  constexpr int tileSize = extent + corner;
++  constexpr int size = 2 * tileSize + 1;
++  QImage image(size, size, QImage::Format_ARGB32_Premultiplied);
++  image.fill(Qt::transparent);
++  const auto distance = [](double x, double y) {
++    const double qx = std::abs(x) - 0.5;
++    const double qy = std::abs(y) - 0.5;
++    return std::hypot(std::max(qx, 0.0), std::max(qy, 0.0))
++        + std::min(std::max(qx, qy), 0.0) - corner;
++  };
++  for (int y = 0; y < size; ++y) {
++    auto *line = reinterpret_cast<QRgb*>(image.scanLine(y));
++    for (int x = 0; x < size; ++x) {
++      const double px = x - tileSize;
++      const double py = y - tileSize;
++      // Keep the glass interior transparent; only the exterior casts a shadow.
++      if (distance(px, py) < 0.0) continue;
++      const double alpha = 0.29 * 0.5 * std::erfc(distance(px, py - 3.0) / (6.0 * std::sqrt(2.0)));
++      line[x] = qRgba(0, 0, 0, qRound(255.0 * alpha));
++    }
++  }
++  const auto tile = [&image, scale](const QRect &rect) {
++    auto result = KWindowShadowTile::Ptr::create();
++    QImage pixels = image.copy(rect);
++    if (scale != 1.0)
++      pixels = pixels.scaled(qMax(1, qRound(rect.width() * scale)),
++                             qMax(1, qRound(rect.height() * scale)),
++                             Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
++    result->setImage(pixels);
++    return result;
++  };
++  shadow->setTopLeftTile(tile(QRect(0, 0, tileSize, tileSize)));
++  shadow->setTopTile(tile(QRect(tileSize, 0, 1, tileSize)));
++  shadow->setTopRightTile(tile(QRect(tileSize + 1, 0, tileSize, tileSize)));
++  shadow->setRightTile(tile(QRect(tileSize + 1, tileSize, tileSize, 1)));
++  shadow->setBottomRightTile(tile(QRect(tileSize + 1, tileSize + 1, tileSize, tileSize)));
++  shadow->setBottomTile(tile(QRect(tileSize, tileSize + 1, 1, tileSize)));
++  shadow->setBottomLeftTile(tile(QRect(0, tileSize + 1, tileSize, tileSize)));
++  shadow->setLeftTile(tile(QRect(0, tileSize, tileSize, 1)));
++  shadow->setPadding(QMargins(qRound((extent - surface.left()) * scale),
++      qRound((extent - surface.top()) * scale),
++      qRound((extent - (widget->width() - surface.right() - 1)) * scale),
++      qRound((extent - (widget->height() - surface.bottom() - 1)) * scale)));
++  if (!shadow->create()) delete shadow;
++}
++#endif
+@@ -175,0 +250,6 @@
 +    case QEvent::DynamicPropertyChange:
 +      if (static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() != "_kvantum_menu_surface")
 +        break;
 +      [[fallthrough]];
-@@ -238,0 +243,5 @@
++    case QEvent::WinIdChange:
++    case QEvent::DevicePixelRatioChange:
+@@ -238,0 +319,5 @@
 +  const QRect declaredMenuSurface = widget->property("_kvantum_menu_surface").toRect();
 +  const bool hasMenuSurface = qobject_cast<QMenu*>(widget)
 +      && !declaredMenuSurface.isEmpty() && rect.contains(declaredMenuSurface);
 +  if (hasMenuSurface)
 +    rect = declaredMenuSurface;
-@@ -288,0 +298,2 @@
+@@ -288,0 +374,2 @@
 +    if (hasMenuSurface)
 +      rect.moveTopLeft((QPointF(rect.topLeft()) * dpr).toPoint());
-@@ -294 +305 @@
+@@ -294 +381 @@
 -  if (!r.isEmpty())
 +  if (!r.isEmpty() && !hasMenuSurface)
+@@ -361,0 +449 @@
++    updateNativeMenuShadow(widget, win);
+@@ -393,0 +482 @@
++    delete win->findChild<KWindowShadow*>(QStringLiteral("_kvantum_menu_shadow"), Qt::FindDirectChildrenOnly);

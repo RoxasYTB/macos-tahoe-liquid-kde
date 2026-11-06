@@ -794,3 +794,37 @@ root's text baselines are unchanged. The session also captures genuine Plasma
 menus and changing live backing. Both Kvantum source files are reproduced exactly
 by archive-plus-patch reapplication. Build succeeds; targeted tests: 32 passed,
 28 skipped. The negative-control failure is intentional, not an unresolved test.
+
+### 2026-11-06: compositor-owned native menu shadow
+
+The reference's exterior shadow spans roughly 12-16 pixels; the previous private
+Qt render had no measurable exterior shadow. A four-pixel client margin cannot
+contain that falloff. BlurHelper now attaches KWindowShadow tiles to the native
+QWindow, aligned to the declared painted surface. The Gaussian falloff has
+sigma 6, peak alpha 0.29 and a three-pixel downward offset. Its interior is
+transparent so the glass's central backing is not darkened. No menu geometry,
+QAction or extra overlay window is introduced.
+
+The owned shadow is deleted on blur unregister/style unpolish and with its
+QWindow parent. Geometry, native ID and scale are checked before reusing tiles;
+resize, WinIdChange and DevicePixelRatioChange trigger buffered updates. XCB
+tile pixels/padding scale with window DPR, matching the native backend's raw
+pixel protocol. The non-XCB KF path uses logical tiles. NO_KF builds keep the
+legacy fallback, with no added dependency. See the [KDE KWindowShadow API](https://api.kde.org/kwindowshadow.html)
+and [XCB backend](https://github.com/KDE/kwindowsystem/blob/master/src/platforms/xcb/kwindowshadow.cpp).
+
+Exact-source private X11 evidence: `/tmp/tahoe-menu-native-shadow-verified-20261106/`.
+Both parent and child publish eight valid shadow pixmaps plus paddings
+(17,16,17,16). Four exterior-strip RGB MAEs fall as follows: left
+6.5439 -> 1.1741, top 3.0083 -> 0.6505, right 6.2888 -> 1.0440,
+bottom 11.3298 -> 1.6924. These are shadow strips, not whole-interface scores.
+
+`tests/native/menu_shadow_lifecycle.py` is an opt-in private-X11 probe. It verifies
+native resource creation, removal under Fusion, recreation under Kvantum and
+updated surface geometry after resize. It passes at QT_SCALE_FACTOR 1, 1.5 and 2;
+paddings scale to (26,24,26,24) and (34,32,34,32). The probe refuses to start
+without MTTKDE_PRIVATE_SHADOW_PROBE=1. The same private session captures actual
+Plasma menus and changing foreground backing. Archive-plus-patch reproduces
+compiled BlurHelper exactly. Kvantum builds; targeted checks: 32 passed,
+28 skipped. Wayland shadow rendering is not qualified by these X11 checks.
+No active desktop setting or process was changed.
