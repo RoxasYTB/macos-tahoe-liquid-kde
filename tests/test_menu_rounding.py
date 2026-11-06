@@ -68,7 +68,7 @@ def test_submenu_overlap_accounts_for_both_transparent_shadow_margins(repo, mode
 
 
 
-def test_native_menu_style_restores_application_margins(tmp_path):
+def test_native_menu_style_preserves_application_margins(tmp_path):
     plugin_path = os.environ.get("MTTKDE_TEST_KVANTUM_PLUGIN_PATH")
     if not plugin_path:
         pytest.skip("compiled Tahoe Kvantum override required")
@@ -98,7 +98,8 @@ def _margins_probe():
     for menu in menus:
         menu.ensurePolished()
     applied = tuple(QMargins(menu.contentsMargins()) for menu in menus)
-    assert applied != originals, "The compiled native menu style was not exercised"
+    assert app.style().objectName().lower() == "kvantum"
+    assert applied == originals, "The native style must preserve application contents margins"
     _check_native_selection_states(root, child, app)
     app.setStyle("fusion")
     assert tuple(menu.contentsMargins() for menu in menus) == originals

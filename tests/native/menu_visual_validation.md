@@ -770,3 +770,27 @@ difference. The real Plasma parent/child remain live over foreground changes:
 43,754 / 24,901 sampled pixels change above eight levels, with median gray chroma
 one level. X11 effect builds successfully. Final targeted checks: 32 passed,
 28 skipped. The active desktop was not modified, and no PR was opened.
+
+### 2026-11-06: register the parent right/bottom contours
+
+Reference edge scans locate the parent's bright right line at x536 and dark
+line at x537; the previous Qt fixture put them at x535/x536. The lower bright
+line belongs at y360, not y361. The child edges already match and stay intact.
+Root native item sizing gains one trailing pixel (mirrored RTL), and the root's
+extra bottom contents margin is removed. The reference fixture is 216x208,
+replacing its previously incorrect fixed 215x209. It uses the same native style
+and real QActions; production menus still derive width from their contents.
+
+With no remaining margin changes, remove the redundant saved-margin properties
+and restore block. Unpolish still clears the cached painted surface. The margin
+regression now asserts exact preservation while checking that the actual Kvantum
+style is loaded. The previous binary fails that assertion; the new binary passes
+through repeated Fusion/Kvantum cycles and selection-state checks.
+
+Exact-source evidence: `/tmp/tahoe-menu-native-parent-bounds-20261106/`. Right
+strip RGB MAE drops 60.9449 -> 9.8495; lower strip 55.8306 -> 12.2236. These are
+local edge strips, not whole-menu scores. Native child remains 159x280, and the
+root's text baselines are unchanged. The session also captures genuine Plasma
+menus and changing live backing. Both Kvantum source files are reproduced exactly
+by archive-plus-patch reapplication. Build succeeds; targeted tests: 32 passed,
+28 skipped. The negative-control failure is intentional, not an unresolved test.

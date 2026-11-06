@@ -221,8 +221,8 @@
 +        label_spec lspec = getLabelSpec(group);
 +        if (const QMenu *menu = qobject_cast<const QMenu*>(widget); menu && !menuParent(menu, false))
 +        {
-+          if (option->direction == Qt::RightToLeft) lspec.right += 9;
-+          else lspec.left += 9;
++          if (option->direction == Qt::RightToLeft) { lspec.right += 9; lspec.left += 1; }
++          else { lspec.left += 9; lspec.right += 1; }
 +        }
 @@ -14487 +14684,2 @@
 -          s = QSize(contentsSize.width(), tspec_.menu_separator_height);
@@ -239,29 +239,9 @@
 +          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
 --- a/Kvantum/style/polishing.cpp
 +++ b/Kvantum/style/polishing.cpp
-@@ -47,0 +48,3 @@
-+// Shared native-menu ownership lookup from Kvantum.cpp.
-+const QMenu *menuParent(const QMenu *menu, bool requireVisible);
+@@ -47,0 +48 @@
 +
-@@ -54,0 +58,11 @@
-+
-+  if (QMenu *menu = qobject_cast<QMenu*>(widget))
-+  {
-+    const QVariant saved = menu->property("_kvantum_original_menu_margins");
-+    const QMargins original = saved.isValid() ? saved.value<QMargins>() : menu->contentsMargins();
-+    if (!saved.isValid())
-+      menu->setProperty("_kvantum_original_menu_margins", QVariant::fromValue(original));
-+    QMargins margins = original;
-+    if (!menuParent(menu, false)) margins.setBottom(margins.bottom() + 1);
-+    menu->setContentsMargins(margins);
-+  }
-@@ -1063,0 +1078,9 @@
-+    const QVariant savedMenuMargins = widget->property("_kvantum_original_menu_margins");
-+    if (savedMenuMargins.isValid())
-+    {
-+      widget->setContentsMargins(savedMenuMargins.value<QMargins>());
-+      widget->setProperty("_kvantum_original_menu_margins", QVariant());
-+    }
+@@ -1063,0 +1065,3 @@
 +    if (qobject_cast<QMenu*>(widget))
 +      widget->setProperty("_kvantum_menu_surface", QVariant());
 +
