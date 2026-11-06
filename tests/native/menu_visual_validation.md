@@ -876,3 +876,25 @@ showed opaque rectangles for those two symbols. The final version also captures
 parent/child hover transitions and changing live backing. Kvantum builds and
 archive-plus-patch matches the compiled source. Targeted checks: 32 passed,
 28 skipped. No active desktop processes or settings were changed.
+
+### 2026-11-06: normal-label vibrancy without changing font size
+
+A private 9.5/9.75/10-point batch was pixel-identical. QFontInfo/QFontMetricsF
+confirm all three resolve to the same 13-pixel SF Pro Text and 110.3125-pixel
+advance for Date Last Opened. No production font-size change follows that test.
+Reference normal-label peaks instead show translucent white: Name reaches
+(230,219,229), while the selected blue Kind row reaches opaque (255,255,255).
+
+Enabled native normal/inactive-parent text now uses white alpha 217/255;
+pointer-blue selection text retains 255/255. This changes label colors only,
+leaving icon tint, checks, geometry, user fonts and disabled labels intact.
+The existing renderer applies label alpha independently of icon painting.
+
+Exact-source evidence: `/tmp/tahoe-menu-native-text-opacity-20261106/`.
+Name's brightest pixel now exactly matches (230,219,229), and Kind retains
+(255,255,255). Across eight text strips, a fixed union-of-bright-pixels metric
+falls from 43.6252 to 34.5681. It includes raster/coverage differences and is
+not comparable to the material-only MAE. The session also captures genuine
+Plasma menus, pointer transitions and changing backing. Kvantum builds;
+archive-plus-patch reproduces the compiled source. Targeted checks finish
+32 passed, 28 skipped. No active desktop settings or fonts were changed.

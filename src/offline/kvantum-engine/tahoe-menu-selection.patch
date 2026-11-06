@@ -117,13 +117,18 @@
 +          painter->restore();
 +          status = KL1("normal");
 +        }
-@@ -5788,0 +5900,5 @@
+@@ -5788,0 +5900,10 @@
++        if (menu && (option->state & State_Enabled))
++        {
++          const bool blueSelection = pointerHover && (openSubmenuRow || (option->state & State_Selected));
++          lspec.normalColor = lspec.normalInactiveColor = getName(QColor(255, 255, 255, blueSelection ? 255 : 217));
++        }
 +        if (menu && !menuParent(menu, false))
 +        {
 +          if (option->direction == Qt::RightToLeft) lspec.right += 9;
 +          else lspec.left += 9;
 +        }
-@@ -5798 +5914,19 @@
+@@ -5798 +5919,19 @@
 -          renderElement(painter,dspec.element+"-separator",option->rect);
 +        {
 +          if (menu)
@@ -144,7 +149,7 @@
 +          else
 +            renderElement(painter,dspec.element+"-separator",option->rect);
 +        }
-@@ -5821,0 +5956,14 @@
+@@ -5821,0 +5961,14 @@
 +          if (openSubmenuRow && (option->state & State_Enabled))
 +          {
 +            const QRect highlightRect = option->rect.adjusted(5, 0, -5, 0);
@@ -159,10 +164,10 @@
 +          painter->save();
 +          if (menu)
 +            painter->translate(option->direction == Qt::RightToLeft ? 1 : -1, 0);
-@@ -5897 +6045 @@
+@@ -5897 +6050 @@
 -            checkSpace = iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +            checkSpace = iw + (menu ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
-@@ -5953 +6101,18 @@
+@@ -5953 +6106,18 @@
 -            QPixmap px = getPixmapFromIcon(opt->icon, getIconMode(state,isInactive,lspec), iconstate, iconSize);
 +            QIcon nativeIcon = opt->icon;
 +            if (menu)
@@ -182,7 +187,7 @@
 +              iconPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
 +              iconPainter.fillRect(px.rect(), QColor(255, 255, 255, state == 0 ? 110 : 255));
 +            }
-@@ -6053,2 +6218,18 @@
+@@ -6053,2 +6223,18 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
@@ -203,7 +208,7 @@
 +            painter->setBrush(Qt::NoBrush);
 +            painter->drawPath(chevron);
 +            painter->restore();
-@@ -6069 +6250,24 @@
+@@ -6069 +6255,24 @@
 -            if (opt->checkType == QStyleOptionMenuItem::Exclusive
 +            if (menu)
 +            {
@@ -229,12 +234,12 @@
 +              }
 +            }
 +            else if (opt->checkType == QStyleOptionMenuItem::Exclusive
-@@ -6083,0 +6288 @@
+@@ -6083,0 +6293 @@
 +          painter->restore();
-@@ -13228,0 +13434,2 @@
+@@ -13228,0 +13439,2 @@
 +      if (metric == PM_MenuVMargin && qobject_cast<const QMenu*>(widget))
 +        return getMenuMargin(false) + 5;
-@@ -14445 +14652,6 @@
+@@ -14445 +14657,6 @@
 -        const label_spec lspec = getLabelSpec(group);
 +        label_spec lspec = getLabelSpec(group);
 +        if (const QMenu *menu = qobject_cast<const QMenu*>(widget); menu && !menuParent(menu, false))
@@ -242,17 +247,17 @@
 +          if (option->direction == Qt::RightToLeft) { lspec.right += 9; lspec.left += 1; }
 +          else { lspec.left += 9; lspec.right += 1; }
 +        }
-@@ -14487 +14699,2 @@
+@@ -14487 +14704,2 @@
 -          s = QSize(contentsSize.width(), tspec_.menu_separator_height);
 +          s = QSize(contentsSize.width(), tspec_.menu_separator_height
 +                    + (qobject_cast<const QMenu*>(widget) ? 1 : 0));
-@@ -14518 +14731,4 @@
+@@ -14518 +14736,4 @@
 -          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
 +          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
 +          // Preserve the application's font and combo/QML menu geometry.
 +          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
 +          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + textPadding));
-@@ -14548 +14764 @@
+@@ -14548 +14769 @@
 -          s.rwidth() += iw + pixelMetric(PM_CheckBoxLabelSpacing);
 +          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
 --- a/Kvantum/style/polishing.cpp
