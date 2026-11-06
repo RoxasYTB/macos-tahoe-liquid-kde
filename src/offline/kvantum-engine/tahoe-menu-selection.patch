@@ -194,7 +194,7 @@
 -            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
 -                          &o,painter);
 +            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
-+            const QPointF center = o.rect.center() + QPointF(rtl ? 2.0 : -2.0, 0.0);
++            const QPointF center = o.rect.center() + QPointF(rtl ? 10.0 : -10.0, 0.0);
 +            const qreal direction = rtl ? -1.0 : 1.0;
 +            QPainterPath chevron;
 +            chevron.moveTo(center.x() - direction * 1.5, center.y() - 3.0);

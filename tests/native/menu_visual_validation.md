@@ -866,8 +866,8 @@ disabled icons use 110/255 white alpha. Prefer the theme's symbolic variant.
 Wallpaper and symbolic-link actions fall back to view-preview/insert-link so
 opaque colored icon backgrounds do not become solid white blocks. Original
 QIcons/assets and non-menu icons are unchanged. Native chevrons and ticks use
-white too; chevrons move two logical pixels inward, mirrored in RTL, without
-changing action geometry or hit areas.
+white too; chevrons are inset ten logical pixels relative to Qt's arrow center,
+mirrored in RTL, without changing action geometry or hit areas.
 
 Exact-source evidence: `/tmp/tahoe-menu-native-symbolic-icons-20261106/`.
 The actual Plasma context menu and child show white symbols, including the image
@@ -876,6 +876,18 @@ showed opaque rectangles for those two symbols. The final version also captures
 parent/child hover transitions and changing live backing. Kvantum builds and
 archive-plus-patch matches the compiled source. Targeted checks: 32 passed,
 28 skipped. No active desktop processes or settings were changed.
+
+### 2026-11-06: reference-aligned submenu chevron inset
+
+The user requested white icons and a chevron with a little more breathing room.
+Compared to the supplied macOS screenshot, the native chevron was about ten
+pixels too close to the right edge. Its center is now shifted eight additional
+logical pixels inward (from the previous two-pixel offset), mirrored for RTL.
+The private exact-source capture puts the reference and KDE chevron ink in the
+same bounds: x=515..518, y=317..323. The native arrow remains white and action
+geometry/hit areas are unchanged. The four-case popup-placement/activation
+probe passes at 100%, 150%, and 200% scale in both Light and Dark profiles.
+Evidence: `/tmp/tahoe-menu-chevron-inset-20261106/`.
 
 ### 2026-11-06: normal-label vibrancy without changing font size
 
