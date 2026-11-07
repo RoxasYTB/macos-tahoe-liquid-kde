@@ -153,6 +153,16 @@ int main() {
     assert(std::any_of(cardShapes.begin(), cardShapes.end(), [](const auto &shape) { return shape.bounds == QRect(152, 0, 140, 139); }));
     const auto wifiShape = std::find_if(cardShapes.begin(), cardShapes.end(), [](const auto &shape) { return shape.bounds == QRect(0, 0, 140, 62); });
     assert(wifiShape != cardShapes.end() && wifiShape->radius == 31.0f);
+    // Adjacent round controls may touch at one antialiased pixel, merging
+    // their QRegion components. They must still produce separate glass normals.
+    const QRegion tangentControls = rasterizedRoundedRect(QRect(0, 0, 64, 64), 32, 8)
+        | rasterizedRoundedRect(QRect(63, 0, 64, 64), 32, 8);
+    const auto tangentShapes = clientBlurShapes(tangentControls);
+    assert(tangentShapes.size() == 2);
+    assert(tangentShapes[0].bounds.width() >= 60 && tangentShapes[0].bounds.height() >= 60);
+    assert(tangentShapes[1].bounds.width() >= 60 && tangentShapes[1].bounds.height() >= 60);
+    assert(std::abs(tangentShapes[0].radius - 32.0f) <= 4.0f);
+    assert(std::abs(tangentShapes[1].radius - 32.0f) <= 4.0f);
     const std::vector<std::pair<QRect, int>> controlCards = {
         {QRect(0, 0, 140, 62), 31}, {QRect(151, 0, 141, 139), 32},
         {QRect(0, 74, 140, 65), 32}, {QRect(0, 150, 140, 63), 31},
@@ -242,7 +252,7 @@ def test_liquid_glass_keeps_live_backdrop_colors_and_smooth_falloff(repo):
     shape = (repo / "src/offline/kwin-effects/acrylic-glass/src/roundedblurshape.h").read_text()
     shader = (repo / "src/offline/kwin-effects/acrylic-glass/src/shaders/glass.glsl").read_text()
     assert "m_darkGradientOverlay = false;" in source
-    assert "const bool nativeResolutionBlur = !dockSurface && m_nativeResolutionBlur;" in source
+    assert "const bool nativeResolutionBlur = !dockSurface && !nativeMenuBlur && m_nativeResolutionBlur;" in source
     assert "blurFalloffMask(const QRegion &region, int fadePixels = 6)" in shape
     assert "t * t * (3.0f - 2.0f * t)" in shape
     assert "blitFromRenderTarget(renderTarget, viewport" in source

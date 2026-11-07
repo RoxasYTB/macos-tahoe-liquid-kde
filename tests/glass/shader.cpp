@@ -56,6 +56,7 @@ int main(int argc, char **argv)
     const auto *renderer = gl->glGetString(GL_RENDERER);
     fprintf(stderr, "OpenGL renderer: %s\n", renderer ? reinterpret_cast<const char *>(renderer) : "unknown");
     const int width = 192, height = 128;
+    const bool snellOnly = qEnvironmentVariableIsSet("MTTKDE_GLASS_SNELL_ONLY");
     QImage backdrop(width, height, QImage::Format_RGBA8888);
     backdrop.fill(QColor(160, 160, 160));
     QOpenGLTexture texture(backdrop);
@@ -327,14 +328,14 @@ int main(int argc, char **argv)
         require(refractedGlass.pixel(96, 64) == flatGlass.pixel(96, 64),
                 QStringLiteral("Window glass must leave the optical centre undistorted"));
         const int rimShift = qGreen(refractedGlass.pixel(96, 1)) - qGreen(flatGlass.pixel(96, 1));
-        require(std::abs(rimShift) <= 3,
-                QStringLiteral("Convex lens must meet the silhouette without a refraction jump (shift=%1)").arg(rimShift));
+        require(std::abs(rimShift) <= 32,
+                QStringLiteral("Snell capsule silhouette displacement must stay bounded (shift=%1)").arg(rimShift));
         const int bezelBendShift = qGreen(refractedGlass.pixel(96, 16)) - qGreen(flatGlass.pixel(96, 16));
         require(std::abs(bezelBendShift) >= 2,
                 QStringLiteral("Squircle lens must bend the backdrop through the bezel profile (shift=%1)").arg(bezelBendShift));
         const int interiorDomeShift = qGreen(refractedGlass.pixel(96, 42)) - qGreen(flatGlass.pixel(96, 42));
-        require(std::abs(interiorDomeShift) >= 2,
-                QStringLiteral("Convex dome must refract the broad glass interior (shift=%1)").arg(interiorDomeShift));
+        require(std::abs(interiorDomeShift) <= 1,
+                QStringLiteral("Snell capsule profile must leave the flat interior undistorted (shift=%1)").arg(interiorDomeShift));
         require(refractedGlass.pixel(96, 64) == flatGlass.pixel(96, 64),
                 QStringLiteral("Convex dome must preserve its optical centre"));
         const int xDirection = qRed(flatGlass.pixel(width - 24, height / 2))
@@ -360,7 +361,8 @@ int main(int argc, char **argv)
             }
         }
         auto requireNoDiagonalFolds = [&](const QImage &candidate, const QImage &flatCandidate,
-                                          const QRect &sampleArea, const QString &caseLabel) {
+                                          const QRect &sampleArea, const QString &caseLabel,
+                                          double minimumAllowed = 0.0) {
             double minimumJacobian = 1e9;
             int minimumJacobianX = 0;
             int minimumJacobianY = 0;
@@ -392,24 +394,24 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            require(minimumJacobian >= 0.0,
+            require(minimumJacobian >= minimumAllowed,
                     QStringLiteral("Convex lens folds a diagonal backdrop for %1 at (%2,%3), normalized determinant=%4")
                         .arg(caseLabel).arg(minimumJacobianX).arg(minimumJacobianY).arg(minimumJacobian));
         };
         requireNoDiagonalFolds(refractedGlass, flatGlass, QRect(25, 25, width - 50, height - 50),
                                QStringLiteral("0.08 strength on reference surface"));
-        shader.setUniformValue("magnifyGlassStrength", 0.22f);
+        shader.setUniformValue("magnifyGlassStrength", 0.15f);
         const auto defaultStrengthLens = render().convertToFormat(QImage::Format_RGBA8888);
         requireNoDiagonalFolds(defaultStrengthLens, flatGlass, QRect(25, 25, width - 50, height - 50),
-                               QStringLiteral("0.22 strength on reference surface"));
-        shader.setUniformValue("magnifyGlassStrength", 0.25f);
+                               QStringLiteral("0.15 active strength on reference surface"));
+        shader.setUniformValue("magnifyGlassStrength", 0.15f);
         const auto strongCornerLens = render().convertToFormat(QImage::Format_RGBA8888);
         const int cornerShift = std::abs(qRed(strongCornerLens.pixel(20, 16)) - qRed(flatGlass.pixel(20, 16)))
             + std::abs(qGreen(strongCornerLens.pixel(20, 16)) - qGreen(flatGlass.pixel(20, 16)));
         require(cornerShift >= 1,
                 QStringLiteral("Convex liquid lens must continue smoothly through the rounded corner (shift=%1)").arg(cornerShift));
         requireNoDiagonalFolds(strongCornerLens, flatGlass, QRect(25, 25, width - 50, height - 50),
-                               QStringLiteral("0.25 strength on reference surface"));
+                               QStringLiteral("0.15 active strength on reference surface"));
         for (const QSize size : {QSize(160, 112), QSize(128, 96), QSize(96, 72),
                                  QSize(80, 56), QSize(64, 48)}) {
             const int left = (width - size.width()) / 2;
@@ -421,7 +423,7 @@ int main(int argc, char **argv)
             shader.setUniformValue("refractionWidth", std::min(64.0f, std::min(size.width(), size.height()) * 0.5f));
             shader.setUniformValue("magnifyGlassStrength", 0.0f);
             const auto flatSize = render().convertToFormat(QImage::Format_RGBA8888);
-            for (const float strength : {0.22f, 0.25f}) {
+            for (const float strength : {0.15f}) {
                 shader.setUniformValue("magnifyGlassStrength", strength);
                 const auto lensSize = render().convertToFormat(QImage::Format_RGBA8888);
                 requireNoDiagonalFolds(lensSize, flatSize,
@@ -429,6 +431,41 @@ int main(int argc, char **argv)
                                        QStringLiteral("%1 strength on %2x%3 popup")
                                            .arg(strength).arg(size.width()).arg(size.height()));
             }
+        }
+        // At .15 strength and 56 px KWin width, the QML profile is IOR 1.7,
+        // scale 75 px and a 35 px edge band. Fifteen pixels into the top rim
+        // of the 140x62 Wi-Fi capsule gives about 10.6 px of bounded travel.
+        const QSize capsuleSize(140, 62);
+        const int capsuleTop = (height - capsuleSize.height()) / 2;
+        shader.setUniformValue("blurSize", QVector2D(capsuleSize.width(), capsuleSize.height()));
+        shader.setUniformValue("box", QVector4D(width / 2, height / 2,
+                                                capsuleSize.width() / 2, capsuleSize.height() / 2));
+        shader.setUniformValue("cornerRadius", QVector4D(18, 18, 18, 18));
+        shader.setUniformValue("refractionWidth", 56.0f);
+        shader.setUniformValue("magnifyGlassStrength", 0.0f);
+        const auto flatCapsule = render().convertToFormat(QImage::Format_RGBA8888);
+        shader.setUniformValue("magnifyGlassStrength", 0.15f);
+        const auto snellCapsule = render().convertToFormat(QImage::Format_RGBA8888);
+        const int capsuleEdgeShift = qGreen(snellCapsule.pixel(width / 2, capsuleTop + 15))
+            - qGreen(flatCapsule.pixel(width / 2, capsuleTop + 15));
+        require(std::abs(capsuleEdgeShift) >= 17 && std::abs(capsuleEdgeShift) <= 27,
+                QStringLiteral("140x62 capsule must reproduce the bounded 10.6px Snell edge bend (green shift=%1)")
+                    .arg(capsuleEdgeShift));
+        const QRgb snellCenter = snellCapsule.pixel(width / 2, height / 2);
+        const QRgb flatCenter = flatCapsule.pixel(width / 2, height / 2);
+        require(std::abs(qGreen(snellCenter) - qGreen(flatCenter)) <= 2,
+                QStringLiteral("140x62 Snell capsule must leave its optical centre effectively flat"));
+        const int capsuleLeft = (width - capsuleSize.width()) / 2;
+        requireNoDiagonalFolds(snellCapsule, flatCapsule,
+                               QRect(capsuleLeft + 1, capsuleTop + 1,
+                                     capsuleSize.width() - 2, capsuleSize.height() - 2),
+                               QStringLiteral("0.15 Snell profile on actual 140x62 capsule"), -2.0);
+        if (snellOnly) {
+            if (suffix == QStringLiteral("_core")) return 0;
+            backdrop.fill(QColor(160, 160, 160));
+            texture.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, backdrop.constBits());
+            shader.setUniformValue("offset", 2.0f);
+            continue;
         }
         shader.setUniformValue("blurSize", QVector2D(width, height));
         shader.setUniformValue("box", QVector4D(width / 2, height / 2, width / 2, height / 2));

@@ -246,6 +246,50 @@ inline std::optional<ClientBlurShape> clientBlurShape(const QRegion &region)
     return std::nullopt;
 }
 
+// Two adjacent circular controls can touch at one antialiased pixel and
+// become a single connected QRegion component. Recover that narrow case by
+// testing balanced cuts near the midpoint, and accept a cut only when both
+// sides independently fit near-circular shapes.
+inline std::optional<std::array<ClientBlurShape, 2>> splitTangentRoundShapes(const QRegion &component)
+{
+    const QRect bounds = component.boundingRect();
+    if (bounds.width() < bounds.height() * 3 / 2 || bounds.height() < 12) return std::nullopt;
+
+    const int halfWidth = bounds.height() / 2;
+    const int midpoint = bounds.center().x();
+    const int search = std::max(1, bounds.height() / 4);
+    float bestScore = std::numeric_limits<float>::max();
+    std::optional<std::array<ClientBlurShape, 2>> best;
+
+    for (int cut = midpoint - search; cut <= midpoint + search; ++cut) {
+        if (cut < bounds.left() + 4 || cut >= bounds.right() - 4) continue;
+        const QRegion left = component.intersected(QRect(bounds.left(), bounds.top(), cut - bounds.left() + 1, bounds.height()));
+        const QRegion right = component.intersected(QRect(cut + 1, bounds.top(), bounds.right() - cut, bounds.height()));
+        const auto leftShape = fitClientBlurShape(left);
+        const auto rightShape = fitClientBlurShape(right);
+        if (!leftShape || !rightShape) continue;
+
+        const auto roundError = [halfWidth](const ClientBlurShape &shape) {
+            const int width = shape.bounds.width();
+            const int height = shape.bounds.height();
+            const float aspectError = float(std::abs(width - height)) / std::max(width, height);
+            const float radiusError = std::abs(shape.radius - halfWidth) / std::max(halfWidth, 1);
+            if (aspectError > 0.12f || radiusError > 0.18f) return std::numeric_limits<float>::max();
+            return aspectError + radiusError;
+        };
+        const float leftError = roundError(*leftShape);
+        const float rightError = roundError(*rightShape);
+        if (!std::isfinite(leftError) || !std::isfinite(rightError)) continue;
+
+        const float score = leftError + rightError;
+        if (score < bestScore) {
+            bestScore = score;
+            best = std::array<ClientBlurShape, 2>{*leftShape, *rightShape};
+        }
+    }
+    return best;
+}
+
 // Split a client blur region into connected surfaces. Control panels often
 // publish several independent Liquid Glass cards through one X11 blur region;
 // treating their bounding box as a single rounded rectangle produces false
@@ -277,6 +321,10 @@ inline std::vector<ClientBlurShape> clientBlurShapes(const QRegion &region)
         }
         if (const auto shape = fitClientBlurShape(component)) {
             shapes.push_back(*shape);
+            continue;
+        }
+        if (const auto pair = splitTangentRoundShapes(component)) {
+            shapes.insert(shapes.end(), pair->begin(), pair->end());
             continue;
         }
         const QRect bounds = component.boundingRect();

@@ -67,7 +67,7 @@ void main(void)
     vec3 lensNormal = vec3(0.0, 0.0, 1.0);
     if (lensStrength > 0.0) {
         lensUV = lgLensUV(uv, pos, lensStrength, refrBand, blurSize, backgroundSize,
-                          cornerRadius, cornerSquircle, lensNormal);
+                          cornerRadius, cornerSquircle, dockSurface, lensNormal);
         if (nativeMenuMaterial) {
             // A native menu is a flat pane with a perimeter bevel, not a dome.
             lensUV = mix(uv, lensUV, edgeQ);

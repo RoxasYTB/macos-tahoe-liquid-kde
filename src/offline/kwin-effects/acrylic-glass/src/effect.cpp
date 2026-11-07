@@ -1874,10 +1874,11 @@ void BlurEffect::blur(
                 shader->setUniform(m_roundedOnscreenPass.cornerRadiusLocation, QVector4D(radius, radius, radius, radius));
                 shader->setUniform(m_roundedOnscreenPass.cornerSquircleLocation, shape.squircleBlend);
                 shader->setUniform(m_roundedOnscreenPass.blurSizeLocation, QVector2D(shapeBox.width(), shapeBox.height()));
-                // Preserve the original capsule refraction calibration;
-                // keep chromatic drift independently controlled by config.
+                // Keep the configured lens strength for each independent glass
+                // capsule. Scaling it down here made the Control Center's live
+                // refraction materially weaker than the calibrated shader profile.
                 shader->setUniform(m_roundedOnscreenPass.magnifyGlassStrengthLocation,
-                                   m_magnifyGlassStrength * 0.55f);
+                                   m_magnifyGlassStrength);
                 shader->setUniform(m_roundedOnscreenPass.rgbDriftStrengthLocation,
                                    float(m_rgbDriftStrength * viewport.scale() * 0.20f));
             }
