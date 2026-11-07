@@ -108,41 +108,48 @@ vec2 lgLensUV(vec2 uv, vec2 surfacePosition,
     // The soft maximum above rounds the normal over a broad 48 px zone. That
     // is useful for the Dock dome, but it invents sideways refraction on the
     // straight edge of short Control Center capsules. Use the actual contour
-    // normal for their Snell displacement.
+    // normal and the same Snell-on-a-dome profile as the Control Center's
+    // LiquidGlass.qml material.
     outwardNormal = lgRoundedRectNormal(surfacePosition, halfSize, cornerRadius, squircleBlend);
-    // Match the successful QML Snell profile: strength 0.15 => scale 75 px,
-    // and the 56 px KWin width => its measured 35 px edge band.
     float edgeBandPx = max(refractionWidth * 0.625, 1.0);
-    float refractionScale = clamp(magnifyGlassStrength, 0.0, 0.25) * 500.0;
     float insetPx = min(max(-signedDistance, 0.0), edgeBandPx);
     float t = clamp(insetPx / max(edgeBandPx, 1.0), 0.0, 1.0);
-    // At .15 strength and 56 px width, the reference's 15 px inset bends
-    // about 10.6 px. Hold that displacement through the rim, then ease it to
-    // zero at the optical centre to avoid a grazing-angle singularity.
-    float capsuleAtInsetPx = refractionScale * 0.1413;
-    float insetAtProbe = min(15.0 / max(edgeBandPx, 1.0), 1.0);
-    float insetAtCenter = min(minSurfaceSize * 0.5 / max(edgeBandPx, 1.0), 1.0);
-    float centerFade = smoothstep(insetAtProbe, max(insetAtCenter, insetAtProbe + 0.001), t);
-    float aspectRatio = max(surfaceSize.x, surfaceSize.y) / max(minSurfaceSize, 1.0);
-    float capsuleFactor = smoothstep(1.7, 2.1, aspectRatio);
+    float sinThetaI = (1.0 - t) * (1.0 - t);
+    float thetaI = asin(clamp(sinThetaI, 0.0, 1.0));
+    float sinThetaT = sinThetaI / 1.7;
+    float thetaT = asin(clamp(sinThetaT, 0.0, 1.0));
+    float edgeMagnification = tan(thetaI - thetaT);
     float selectedRadius = surfacePosition.x > 0.0
         ? (surfacePosition.y > 0.0 ? cornerRadius.y : cornerRadius.w)
         : (surfacePosition.y > 0.0 ? cornerRadius.x : cornerRadius.z);
     vec2 cornerQ = abs(surfacePosition) - halfSize + selectedRadius;
-    float roundedCorner = smoothstep(-12.0, 12.0, min(cornerQ.x, cornerQ.y));
-    float cornerAttenuation = 1.0 - 0.9 * roundedCorner;
-    float capsuleDisplacementPx = capsuleAtInsetPx * (1.0 - centerFade) * cornerAttenuation;
-    float smallSurfaceDisplacementPx = min(refractionWidth * 0.035, minSurfaceSize * 0.035)
-        * (1.0 - t) * (1.0 - t);
-    float edgeDisplacementPx = mix(smallSurfaceDisplacementPx,
-                                   capsuleDisplacementPx, capsuleFactor);
-    vec2 offsetPx = -outwardNormal * edgeDisplacementPx;
+    float cornerWeight = 1.0 - 0.98 * smoothstep(-12.0, 12.0, min(cornerQ.x, cornerQ.y));
+    float aspectRatio = max(surfaceSize.x, surfaceSize.y) / max(minSurfaceSize, 1.0);
+    float capsuleFactor = smoothstep(1.7, 2.1, aspectRatio);
+    // The calibrated 0.15 KWin value maps to the proven 75 px QML Snell
+    // scale. Wider cards keep that profile; compact rounded controls soften
+    // it to avoid folds where two edges meet at a corner.
+    float refractionScale = clamp(magnifyGlassStrength, 0.0, 0.25) * (75.0 / 0.15)
+        * mix(0.30, 1.0, capsuleFactor);
+    vec2 offsetPx = -outwardNormal * edgeMagnification * refractionScale * cornerWeight;
+
+    // Bound the grazing-angle peak without flattening the optical profile.
+    // The previous 20% cap saturated almost the entire capsule and made
+    // strength changes visually indistinguishable; the 45% cap preserves the
+    // curved displacement across the visible bezel while protecting corners.
+    float safeCapRatio = mix(0.11, 0.45, capsuleFactor);
+    float maxDisplacementPx = min(max(refractionWidth * 0.8, minSurfaceSize * 0.12),
+                                  minSurfaceSize * safeCapRatio);
+    float displacementPx = length(offsetPx);
+    float boundedDisplacementPx = displacementPx / sqrt(1.0
+        + pow(displacementPx / max(maxDisplacementPx, 1.0), 2.0));
+    offsetPx *= boundedDisplacementPx / max(displacementPx, 0.001);
 
     // KWin's scene UV has its origin at the lower left; surfacePosition and
     // the QML Snell normal use screen coordinates with y increasing down.
     // Flip the vertical pixel offset when converting it to the captured scene.
     vec2 offsetUV = vec2(offsetPx.x, -offsetPx.y) / max(backgroundSize, vec2(1.0));
-    surfaceNormal = normalize(vec3(outwardNormal * (1.0 - t) * 0.35, 1.0));
+    surfaceNormal = normalize(vec3(outwardNormal * edgeMagnification, 1.0));
     return clamp(uv + offsetUV, 0.0, 1.0);
 }
 
