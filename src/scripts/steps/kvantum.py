@@ -5,6 +5,7 @@ from localization import tr
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import tarfile
@@ -39,11 +40,45 @@ ENGINE_OVERLAY_PLUGIN = ENGINE_OVERLAY_ROOT / "styles/libkvantum.so"
 ENGINE_OVERLAY_MARKER = DATA_HOME / "mac-tahoe-liquid-kde/kvantum-engine-overlay.json"
 ENGINE_OVERLAY_LICENSE = DATA_HOME / "mac-tahoe-liquid-kde/licenses/Kvantum.txt"
 ENGINE_OVERLAY_ENV_MARKER = "# Managed by mac-tahoe-liquid-kde: Kvantum Qt6 menu styling\n"
+PLASMASHELL_WRAPPER_MARKER = "#!/bin/sh\n# Managed by mac-tahoe-liquid-kde: persistent Plasma menu styling\n"
 
 
 def _engine_overlay_env_path() -> Path:
     config_home = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config")
     return config_home / "plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+
+
+def _plasmashell_wrapper_path() -> Path:
+    return HOME / ".local/bin/plasmashell"
+
+
+def _plasmashell_wrapper_contents() -> str:
+    plugin_path = shlex.quote(str(ENGINE_OVERLAY_ROOT))
+    qml_path = shlex.quote(str(DATA_HOME / "mac-tahoe-liquid-kde/plasma-menu-style/qml"))
+    return (
+        PLASMASHELL_WRAPPER_MARKER
+        + f"_tahoe_plugin_path={plugin_path}\n"
+        + f"_tahoe_qml_path={qml_path}\n"
+        + 'case ":${QT_PLUGIN_PATH:-}:" in\n'
+        + '    *":${_tahoe_plugin_path}:"*) ;;\n'
+        + '    *) export QT_PLUGIN_PATH="${_tahoe_plugin_path}${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" ;;\n'
+        + "esac\n"
+        + 'case ":${QML_IMPORT_PATH:-}:" in\n'
+        + '    *":${_tahoe_qml_path}:"*) ;;\n'
+        + '    *) export QML_IMPORT_PATH="${_tahoe_qml_path}${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}" ;;\n'
+        + "esac\n"
+        + 'exec /usr/bin/plasmashell "$@"\n'
+    )
+
+
+def _plasmashell_wrapper_owned(path: Path | None = None) -> bool:
+    path = path or _plasmashell_wrapper_path()
+    try:
+        return not path.is_symlink() and path.read_text(encoding="utf-8").startswith(
+            PLASMASHELL_WRAPPER_MARKER
+        )
+    except (OSError, UnicodeError):
+        return False
 
 
 def _sha256(path: Path) -> str:
@@ -208,6 +243,11 @@ def _install_user_overlay_engine() -> bool:
     if env_exists and not _overlay_env_owned(env_path):
         fail(tr('Custom Plasma environment file preserved: {value1}', value1=env_path))
         return False
+    wrapper_path = _plasmashell_wrapper_path()
+    wrapper_exists = wrapper_path.exists() or wrapper_path.is_symlink()
+    if wrapper_exists and not _plasmashell_wrapper_owned(wrapper_path):
+        fail(tr('Custom plasmashell launcher preserved: {value1}', value1=wrapper_path))
+        return False
 
     marker_exists = ENGINE_OVERLAY_MARKER.exists() or ENGINE_OVERLAY_MARKER.is_symlink()
     previous_marker: dict = {}
@@ -253,11 +293,14 @@ def _install_user_overlay_engine() -> bool:
         final_source = ENGINE_WORK / "kvantum-overlay.json"
         license_dest_source = ENGINE_WORK / "Kvantum-overlay.txt"
         env_source = ENGINE_WORK / "kvantum-overlay-env.sh"
+        wrapper_source = ENGINE_WORK / "plasmashell-wrapper"
         pending_source.write_text(json.dumps(pending_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         final_source.write_text(json.dumps(marker_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         shutil.copy2(license_source, license_dest_source)
         env_source.write_text(_overlay_env_contents(), encoding="utf-8")
         env_source.chmod(0o644)
+        wrapper_source.write_text(_plasmashell_wrapper_contents(), encoding="utf-8")
+        wrapper_source.chmod(0o755)
     except OSError as exc:
         fail(tr('Kvantum overlay metadata could not be prepared ({value1})', value1=exc))
         return False
@@ -271,6 +314,11 @@ def _install_user_overlay_engine() -> bool:
     if not sudo_install_file(final_source, ENGINE_OVERLAY_MARKER, tr('Kvantum overlay ownership marker installed'), user_owned=True):
         return False
     if not sudo_install_file(env_source, env_path, tr('Plasma Kvantum overlay startup integration'), user_owned=True):
+        return False
+    if not sudo_install_file(
+        wrapper_source, wrapper_path,
+        tr('Persistent Plasma menu launcher'), user_owned=True,
+    ):
         return False
     if not _set_session_qt_plugin_path(True):
         warn(tr('Kvantum plugin path was not added to the current Plasma session'))
@@ -544,10 +592,13 @@ def install() -> None:
 def _remove_user_overlay_engine() -> None:
     marker_exists = ENGINE_OVERLAY_MARKER.exists() or ENGINE_OVERLAY_MARKER.is_symlink()
     env_path = _engine_overlay_env_path()
+    wrapper_path = _plasmashell_wrapper_path()
     if not marker_exists:
         if _overlay_env_owned(env_path):
             if sudo_remove(env_path, tr('Plasma Kvantum overlay startup integration')):
                 _set_session_qt_plugin_path(False)
+        if _plasmashell_wrapper_owned(wrapper_path):
+            sudo_remove(wrapper_path, tr('Persistent Plasma menu launcher'))
         return
     if ENGINE_OVERLAY_MARKER.is_symlink():
         fail(tr('Kvantum overlay marker is a symlink; retaining overlay for recovery'))
@@ -572,6 +623,9 @@ def _remove_user_overlay_engine() -> None:
         else:
             warn(tr('Custom Plasma environment file preserved: {value1}', value1=env_path))
             return
+
+    if _plasmashell_wrapper_owned(wrapper_path):
+        sudo_remove(wrapper_path, tr('Persistent Plasma menu launcher'))
 
     plugin_owned = False
     if ENGINE_OVERLAY_PLUGIN.is_file() and not ENGINE_OVERLAY_PLUGIN.is_symlink():

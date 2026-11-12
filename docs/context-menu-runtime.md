@@ -10,21 +10,28 @@ assets and selecting the Kvantum theme is not enough if the running
 The installer prepares the user shell environment and the current session
 before its final Plasma restart. At login, the generated Plasma environment
 hooks also update both the systemd user manager and D-Bus activation
-environment. This matters because a restarted shell may be launched by either
-service manager rather than by the original installer process:
+environment. For direct restarts from a shell (including a separate Codex
+session), the installer also puts a managed `~/.local/bin/plasmashell` wrapper
+ahead of `/usr/bin` when it is on `PATH`. The wrapper supplies both paths and
+execs the real binary, so the launching process does not need to inherit the
+desktop login environment.
 
 - `QT_PLUGIN_PATH` points first to the locally patched Kvantum plugin. The
-  installer updates its own environment and the systemd user manager so the
-  restarted shell inherits the same plugin path. Existing plugin paths are
-  retained; uninstall removes only this theme's path.
+  installer updates its own environment, the systemd user manager, the D-Bus
+  activation environment, and the persistent launcher. Existing plugin paths
+  are retained; uninstall removes only this theme's path and its owned wrapper.
 - `QML_IMPORT_PATH` points first to the Plasma menu overlay. It is likewise
-  merged into the installer process and systemd user environment before the
-  restart, and uninstall removes only the overlay path.
+  merged into the installer process and both activation environments before
+  the restart, and uninstall removes only the overlay path.
 
 This fixes the case where the theme files were installed but the current
 Plasma shell continued to load the distribution's unpatched Kvantum plugin.
 Dolphin and Plasma can then use the same installed Kvantum styling while QML
 menus load the matching overlay assets.
+
+The wrapper applies when a process runs `plasmashell` by name and the user's
+`~/.local/bin` precedes `/usr/bin` in `PATH`. Calls to `/usr/bin/plasmashell`
+directly bypass it; those rely on the login or service-manager environment.
 
 ## Runtime verification
 

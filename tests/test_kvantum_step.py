@@ -76,6 +76,7 @@ def test_distro_overlay_installs_user_plugin_without_replacing_system_engine(
     marker = tmp_path / "data/mac-tahoe/kvantum-engine-overlay.json"
     license_dest = tmp_path / "data/mac-tahoe/licenses/Kvantum.txt"
     env = tmp_path / "config/plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+    wrapper = tmp_path / "home/.local/bin/plasmashell"
     work = tmp_path / "build-stage"
     calls = []
     session_calls = []
@@ -90,6 +91,7 @@ def test_distro_overlay_installs_user_plugin_without_replacing_system_engine(
     monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", marker)
     monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_LICENSE", license_dest)
     monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    monkeypatch.setattr(kvantum, "_plasmashell_wrapper_path", lambda: wrapper)
     monkeypatch.setenv("QT_PLUGIN_PATH", "/system/qt6/plugins")
     monkeypatch.setattr(
         kvantum,
@@ -116,7 +118,11 @@ def test_distro_overlay_installs_user_plugin_without_replacing_system_engine(
     assert "${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" in env.read_text()
     assert "systemctl --user set-environment" in env.read_text()
     assert "dbus-update-activation-environment --systemd QT_PLUGIN_PATH" in env.read_text()
-    assert len(calls) == 5 and all(user_owned for _dest, user_owned in calls)
+    assert wrapper.is_file()
+    assert wrapper.read_text().startswith(kvantum.PLASMASHELL_WRAPPER_MARKER)
+    assert f"_tahoe_plugin_path={overlay_root}" in wrapper.read_text()
+    assert 'exec /usr/bin/plasmashell "$@"' in wrapper.read_text()
+    assert len(calls) == 6 and all(user_owned for _dest, user_owned in calls)
     assert os.environ["QT_PLUGIN_PATH"].startswith(f"{overlay_root}:")
     assert session_calls[-1][2] == "set-environment"
     assert session_calls[-1][3].startswith(f"QT_PLUGIN_PATH={overlay_root}:")
@@ -263,6 +269,10 @@ def test_uninstall_removes_owned_overlay_but_preserves_distro_plugin(
     monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", marker)
     monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_LICENSE", license_file)
     monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    wrapper = tmp_path / "home/.local/bin/plasmashell"
+    monkeypatch.setattr(kvantum, "_plasmashell_wrapper_path", lambda: wrapper)
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text(kvantum.PLASMASHELL_WRAPPER_MARKER + 'exec /usr/bin/plasmashell "$@"\n')
     monkeypatch.setattr(
         kvantum, "sudo_remove",
         lambda path, _label=None: Path(path).unlink(missing_ok=True) or True,
@@ -275,6 +285,7 @@ def test_uninstall_removes_owned_overlay_but_preserves_distro_plugin(
     assert not marker.exists()
     assert not license_file.exists()
     assert not env.exists()
+    assert not wrapper.exists()
 
 
 def test_uninstall_retains_overlay_when_environment_is_unmanaged(
