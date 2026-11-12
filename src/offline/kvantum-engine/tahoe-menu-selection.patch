@@ -1,0 +1,683 @@
+diff -Naur --strip-trailing-cr patch-verify/Kvantum/style/blur/blurhelper.cpp patch-check-20261111b/Kvantum/style/blur/blurhelper.cpp
+--- a/Kvantum/style/blur/blurhelper.cpp	2026-11-11 13:54:26.442961100 +0100
++++ b/Kvantum/style/blur/blurhelper.cpp	2026-11-11 00:26:03.320711300 +0100
+@@ -28,9 +28,83 @@
+ #include <X11/Xatom.h>
+ #else
+ #include <KWindowEffects>
++#include <KWindowShadow>
++#include <QImage>
++#include <QGuiApplication>
++#include <cmath>
+ #endif
+ 
+ namespace Kvantum {
++#ifndef NO_KF
++// Compositor-owned tiles extend beyond QMenu's transparent client margins.
++static void updateNativeMenuShadow(QWidget *widget, QWindow *window)
++{
++  const QRect surface = widget->property("_kvantum_menu_surface").toRect().adjusted(-1, -1, 1, 1);
++  if (!qobject_cast<QMenu*>(widget) || surface.isEmpty()) return;
++  const QString name = QStringLiteral("_kvantum_menu_shadow");
++  const qreal scale = QGuiApplication::platformName() == QStringLiteral("xcb")
++      ? window->devicePixelRatio() : 1.0;
++  const qulonglong windowId = window->winId();
++  auto *shadow = window->findChild<KWindowShadow*>(name, Qt::FindDirectChildrenOnly);
++  if (shadow && shadow->property("surface").toRect() == surface
++      && shadow->property("scale").toReal() == scale
++      && shadow->property("windowId").toULongLong() == windowId && shadow->isCreated()) return;
++  delete shadow;
++  shadow = new KWindowShadow(window);
++  shadow->setObjectName(name);
++  shadow->setProperty("surface", surface);
++  shadow->setProperty("scale", scale);
++  shadow->setProperty("windowId", windowId);
++  shadow->setWindow(window);
++
++  constexpr int extent = 20;
++  constexpr int corner = 10;
++  constexpr int tileSize = extent + corner;
++  constexpr int size = 2 * tileSize + 1;
++  QImage image(size, size, QImage::Format_ARGB32_Premultiplied);
++  image.fill(Qt::transparent);
++  const auto distance = [](double x, double y) {
++    const double qx = std::abs(x) - 0.5;
++    const double qy = std::abs(y) - 0.5;
++    return std::hypot(std::max(qx, 0.0), std::max(qy, 0.0))
++        + std::min(std::max(qx, qy), 0.0) - corner;
++  };
++  for (int y = 0; y < size; ++y) {
++    auto *line = reinterpret_cast<QRgb*>(image.scanLine(y));
++    for (int x = 0; x < size; ++x) {
++      const double px = x - tileSize;
++      const double py = y - tileSize;
++      // Keep the glass interior transparent; only the exterior casts a shadow.
++      if (distance(px, py) < 0.0) continue;
++      const double alpha = 0.29 * 0.5 * std::erfc(distance(px, py - 3.0) / (6.0 * std::sqrt(2.0)));
++      line[x] = qRgba(0, 0, 0, qRound(255.0 * alpha));
++    }
++  }
++  const auto tile = [&image, scale](const QRect &rect) {
++    auto result = KWindowShadowTile::Ptr::create();
++    QImage pixels = image.copy(rect);
++    if (scale != 1.0)
++      pixels = pixels.scaled(qMax(1, qRound(rect.width() * scale)),
++                             qMax(1, qRound(rect.height() * scale)),
++                             Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
++    result->setImage(pixels);
++    return result;
++  };
++  shadow->setTopLeftTile(tile(QRect(0, 0, tileSize, tileSize)));
++  shadow->setTopTile(tile(QRect(tileSize, 0, 1, tileSize)));
++  shadow->setTopRightTile(tile(QRect(tileSize + 1, 0, tileSize, tileSize)));
++  shadow->setRightTile(tile(QRect(tileSize + 1, tileSize, tileSize, 1)));
++  shadow->setBottomRightTile(tile(QRect(tileSize + 1, tileSize + 1, tileSize, tileSize)));
++  shadow->setBottomTile(tile(QRect(tileSize, tileSize + 1, 1, tileSize)));
++  shadow->setBottomLeftTile(tile(QRect(0, tileSize + 1, tileSize, tileSize)));
++  shadow->setLeftTile(tile(QRect(0, tileSize, tileSize, 1)));
++  shadow->setPadding(QMargins(qRound((extent - surface.left()) * scale),
++      qRound((extent - surface.top()) * scale),
++      qRound((extent - (widget->width() - surface.right() - 1)) * scale),
++      qRound((extent - (widget->height() - surface.bottom() - 1)) * scale)));
++  if (!shadow->create()) delete shadow;
++}
++#endif
+ BlurHelper::BlurHelper (QObject* parent, QList<qreal> menuS, QList<qreal> tooltipS,
+                         int menuBlurRadius, int toolTipBlurRadius,
+                         qreal contrast, qreal intensity, qreal saturation,
+@@ -173,6 +247,12 @@
+ {
+   switch (event->type())
+   {
++    case QEvent::DynamicPropertyChange:
++      if (static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() != "_kvantum_menu_surface")
++        break;
++      [[fallthrough]];
++    case QEvent::WinIdChange:
++    case QEvent::DevicePixelRatioChange:
+     case QEvent::Show:
+     case QEvent::Hide:
+     case QEvent::Resize:
+@@ -236,6 +316,11 @@
+     return QRegion();
+ 
+   QRect rect = widget->rect();
++  const QRect declaredMenuSurface = widget->property("_kvantum_menu_surface").toRect();
++  const bool hasMenuSurface = qobject_cast<QMenu*>(widget)
++      && !declaredMenuSurface.isEmpty() && rect.contains(declaredMenuSurface);
++  if (hasMenuSurface)
++    rect = declaredMenuSurface;
+   QRegion wMask = widget->mask();
+ 
+   qreal dpr = 1;
+@@ -286,12 +371,14 @@
+ #ifdef NO_KF
+   if (dpr > static_cast<qreal>(1))
+   {
++    if (hasMenuSurface)
++      rect.moveTopLeft((QPointF(rect.topLeft()) * dpr).toPoint());
+     rect.setSize (QSizeF(rect.size() * dpr).toSize());
+     radius *= qRound (dpr * 2);
+   }
+ #endif
+ 
+-  if (!r.isEmpty())
++  if (!r.isEmpty() && !hasMenuSurface)
+   {
+     rect.adjust (ceilingInt (dpr * r.at (0)),
+                  ceilingInt (dpr * r.at (1)),
+@@ -359,6 +446,7 @@
+                      data.size());
+ #else
+     KWindowEffects::enableBlurBehind (win, true, region);
++    updateNativeMenuShadow(widget, win);
+     /* NOTE: The contrast effect isn't used with menus and tooltips
+              because their borders may be anti-aliased. */
+     if ((contrast_ != static_cast<qreal>(1)
+@@ -391,6 +479,7 @@
+   QWindow *win = widget->windowHandle();
+   if (win != nullptr)
+   {
++    delete win->findChild<KWindowShadow*>(QStringLiteral("_kvantum_menu_shadow"), Qt::FindDirectChildrenOnly);
+     KWindowEffects::enableBlurBehind (win, false);
+     if ((contrast_ != static_cast<qreal>(1)
+          || intensity_ != static_cast<qreal>(1)
+diff -Naur --strip-trailing-cr patch-verify/Kvantum/style/eventFiltering.cpp patch-check-20261111b/Kvantum/style/eventFiltering.cpp
+--- a/Kvantum/style/eventFiltering.cpp	2026-11-11 13:54:26.446669500 +0100
++++ b/Kvantum/style/eventFiltering.cpp	2026-11-11 00:26:03.321845800 +0100
+@@ -37,12 +37,16 @@
+ #include <QMenuBar>
+ #include <QDialog>
+ #include <QWindow> // for positioning menus
++#include <QGuiApplication>
++#include <QScreen>
+ #include <QScreen> // for positioning menus
+ #include <QStylePainter>
+ 
+ namespace Kvantum
+ {
+ 
++const QMenu *menuParent(const QMenu *menu, bool requireVisible);
++
+ void Style::drawBg(QPainter *p, const QWidget *widget) const
+ {
+   if (widget->palette().color(widget->backgroundRole()) == Qt::transparent)
+@@ -1318,6 +1322,40 @@
+           }
+         }
+ 
++        // Position owned native submenus from their QAction, independent of
++        // Qt's version-specific shadow compensation. Preserve the chosen side.
++        if (tspec_.isX11 && menu->testAttribute(Qt::WA_TranslucentBackground))
++        {
++          if (const QMenu *owner = menuParent(menu, true))
++          {
++            for (QAction *action : owner->actions())
++            {
++              if (action->menu() != menu) continue;
++              const QRect ownerRect(owner->mapToGlobal(QPoint(0, 0)), owner->size());
++              QRect menuAvailable = ag;
++              const QPoint ownerCenter = owner->mapToGlobal(owner->rect().center());
++              if (QScreen *ownerScreen = QGuiApplication::screenAt(ownerCenter))
++                menuAvailable = ownerScreen->availableGeometry();
++              const int rightX = ownerRect.right() - tspec_.submenu_overlap;
++              const int leftX = ownerRect.left() + tspec_.submenu_overlap - g.width() + 1;
++              const bool fitsRight = menuAvailable.isValid()
++                  && rightX + g.width() <= menuAvailable.right() + 1;
++              const bool fitsLeft = menuAvailable.isValid() && leftX >= menuAvailable.left();
++              const bool opensRight = fitsRight || (!fitsLeft && g.center().x() >= ownerRect.center().x());
++              int x = opensRight ? rightX : leftX;
++              int y = owner->mapToGlobal(owner->actionGeometry(action).topLeft()).y()
++                  - pixelMetric(PM_MenuVMargin, nullptr, menu);
++              if (menuAvailable.isValid())
++              {
++                x = qBound(menuAvailable.left(), x, qMax(menuAvailable.left(), menuAvailable.right() - g.width() + 1));
++                y = qBound(menuAvailable.top(), y, qMax(menuAvailable.top(), menuAvailable.bottom() - g.height() + 1));
++              }
++              dX = x - g.left();
++              dY = y - g.top();
++              break;
++            }
++          }
++        }
+         int DX = qRound(dX);
+         int DY = qRound(dY);
+         if (DX == 0 && DY == 0) break;
+--- a/Kvantum/style/Kvantum.cpp
++++ b/Kvantum/style/Kvantum.cpp
+@@ -32,6 +32,7 @@
+ #include <QLineEdit>
+ #include <QProgressBar>
+ #include <QMenu>
++#include <QCursor>
+ #include <QGroupBox>
+ #include <QAbstractScrollArea>
+ //#include <QAbstractButton>
+@@ -72,6 +73,29 @@
+ 
+ namespace Kvantum
+ {
++
++// QAction ownership also identifies detached native Qt submenus before show.
++const QMenu *menuParent(const QMenu *menu, bool requireVisible = true)
++{
++  if (!menu)
++    return nullptr;
++  const auto ownsMenu = [menu, requireVisible](const QMenu *candidate) {
++    if (!candidate || candidate == menu || (requireVisible && !candidate->isVisible()))
++      return false;
++    for (QAction *action : candidate->actions())
++      if (action->menu() == menu)
++        return true;
++    return false;
++  };
++  const QMenu *parent = qobject_cast<const QMenu*>(menu->parentWidget());
++  if (ownsMenu(parent))
++    return parent;
++  if (menu->menuAction())
++    for (QObject *associated : menu->menuAction()->associatedObjects())
++      if (const QMenu *candidate = qobject_cast<const QMenu*>(associated); ownsMenu(candidate))
++        return candidate;
++  return nullptr;
++}
+ 
+ // Taken from https://www.w3.org/TR/WCAG20/.
+ // It isn't related to HSL lightness.
+@@ -3223,6 +3247,10 @@
+         fspec.left = fspec.right = pixelMetric(PM_MenuHMargin,option,widget);
+       }
+       fspec.top = fspec.bottom = pixelMetric(PM_MenuVMargin,option,widget);
++      // Layout includes a five-pixel text inset; the painted glass only
++      // excludes the transparent shadow, not that interior breathing room.
++      if (qobject_cast<const QMenu*>(widget))
++        fspec.top = fspec.bottom = qMax(0, fspec.top - 5);
+ 
+       if (!tspec_.shadowless_popup
+           && isTranslucent && tspec_now.menu_shadow_depth > 0
+@@ -3284,6 +3312,65 @@
+           painter->restore();
+       }
+ 
++      // Match Aurorae's one-pixel, 12% white application-window edge.
++      if (widget && qobject_cast<const QMenu*>(widget))
++      {
++        const QRect menuSurface = interiorRect(r, fspec);
++        QWidget *menu = const_cast<QWidget*>(widget);
++        if (blurHelper_ && tspec_now.popup_blurring)
++        {
++          blurHelper_->registerWidget(menu);
++          // Keep the dark keyline outside the refractive glass plane.
++          const QRect glassSurface = menuSurface.adjusted(1, 0, -1, 0);
++          if (menu->property("_kvantum_menu_surface").toRect() != glassSurface)
++            menu->setProperty("_kvantum_menu_surface", glassSurface);
++        }
++        const bool tahoeRealMenu = isDolphin_ || qApp->applicationName() == KL1("plasmashell");
++        const qreal verticalInset = tahoeRealMenu ? 1.5 : 0.5;
++        const QRectF edge = QRectF(menuSurface).adjusted(1.5, verticalInset, -1.5, -verticalInset);
++        if (tahoeRealMenu)
++        {
++          // One glass surface avoids seams between SVG corner and interior tiles.
++          QPainterPath outside, surface;
++          outside.addRect(QRectF(option->rect));
++          surface.addRoundedRect(QRectF(menuSurface), 12.0, 12.0);
++          painter->save();
++          painter->setRenderHint(QPainter::Antialiasing, true);
++          painter->setCompositionMode(QPainter::CompositionMode_Clear);
++          painter->fillPath(outside.subtracted(surface), Qt::transparent);
++          painter->setCompositionMode(QPainter::CompositionMode_Source);
++          painter->fillPath(surface, QColor(0, 0, 0, 122));
++          painter->restore();
++        }
++        painter->save();
++        painter->setRenderHint(QPainter::Antialiasing, true);
++        const qreal previewRadius = menu->property("_tahoe_preview_corner_radius").isValid()
++            ? qMax(0.0, menu->property("_tahoe_preview_corner_radius").toReal()) : (tahoeRealMenu ? 12.0 : 9.0);
++        const qreal previewOuterWidth = menu->property("_tahoe_preview_outer_width").isValid()
++            ? qMax(0.0, menu->property("_tahoe_preview_outer_width").toReal()) : 1.0;
++        const qreal previewInnerWidth = menu->property("_tahoe_preview_inner_width").isValid()
++            ? qMax(0.0, menu->property("_tahoe_preview_inner_width").toReal()) : 1.0;
++        const QVariant outerValue = menu->property("_tahoe_preview_outer_color");
++        const QVariant innerValue = menu->property("_tahoe_preview_inner_color");
++        const QColor previewOuterColor = outerValue.canConvert<QColor>()
++            ? outerValue.value<QColor>() : QColor(0, 0, 0, (isTranslucent || tahoeRealMenu) ? 217 : 31);
++        const QColor previewInnerColor = innerValue.canConvert<QColor>()
++            ? innerValue.value<QColor>() : QColor(255, 255, 255, 31);
++        QPen edgePen(previewOuterColor);
++        edgePen.setWidthF(previewOuterWidth);
++        painter->setPen(edgePen);
++        painter->setBrush(Qt::NoBrush);
++        // Both keylines replace the veil rather than accumulating its opacity.
++        if (isTranslucent)
++          painter->setCompositionMode(QPainter::CompositionMode_Source);
++        painter->drawRoundedRect(edge.adjusted(-1.0, -1.0, 1.0, 1.0), previewRadius, previewRadius);
++        edgePen.setColor(previewInnerColor);
++        edgePen.setWidthF(previewInnerWidth);
++        painter->setPen(edgePen);
++        const qreal innerRadius = qMax(0.0, previewRadius - 1.0);
++        painter->drawRoundedRect(edge, innerRadius, innerRadius);
++        painter->restore();
++      }
+       break;
+     }
+ 
+@@ -5780,12 +5867,82 @@
+ 
+       if (opt) {
+         QString status = getState(option,widget);
++        const QMenu *menu = qobject_cast<const QMenu*>(widget);
++        const QMenu *parentMenu = menuParent(menu);
++        const bool isSubmenu = parentMenu != nullptr;
++        const QRect itemGlobal = menu
++            ? QRect(menu->mapToGlobal(option->rect.topLeft()), option->rect.size())
++            : QRect();
++        const bool pointerHover = menu != nullptr && itemGlobal.contains(QCursor::pos());
++        if (isSubmenu && pointerHover && parentMenu != nullptr)
++        {
++          for (QAction *parentAction : parentMenu->actions())
++          {
++            if (parentAction->menu() == menu)
++            {
++              const_cast<QMenu*>(parentMenu)->update(parentMenu->actionGeometry(parentAction));
++              break;
++            }
++          }
++        }
++        bool openSubmenuRow = false;
++        if (menu != nullptr)
++        {
++          for (QAction *action : menu->actions())
++          {
++            const QRect actionRect = menu->actionGeometry(action);
++            if (action == menu->activeAction()
++                && action->menu() != nullptr && action->menu()->isVisible()
++                && actionRect.top() <= option->rect.center().y()
++                && actionRect.bottom() >= option->rect.center().y())
++            {
++              openSubmenuRow = true;
++              break;
++            }
++          }
++        }
++        if (openSubmenuRow)
++          status = KL1("normal");
+         const QString group = "MenuItem";
++        const bool tahoeNativeSelection =
++            menu != nullptr && (!openSubmenuRow || pointerHover)
++            && opt->menuItemType != QStyleOptionMenuItem::Separator
++            && (option->state & State_Enabled)
++            && (option->state & State_Selected);
++        if (tahoeNativeSelection)
++        {
++          // Keep keyboard-selected rows neutral; only pointer hover and the
++          // single active submenu parent receive a painted tile.
++          if (pointerHover)
++          {
++            QRect selectionRect = option->rect.adjusted(6, 0, -6, 0);
++            QPainterPath selectionPath;
++            selectionPath.addRoundedRect(selectionRect,
++                                         qMin(6.0, selectionRect.height() / 2.0),
++                                         qMin(6.0, selectionRect.height() / 2.0));
++            painter->save();
++            painter->setRenderHint(QPainter::Antialiasing, true);
++            painter->fillPath(selectionPath, QColor(85, 119, 214));
++            painter->restore();
++          }
++          status = KL1("normal");
++        }
+ 
+         const frame_spec fspec = getFrameSpec(group);
+         const interior_spec ispec = getInteriorSpec(group);
+         const indicator_spec dspec = getIndicatorSpec(group);
+         label_spec lspec = getLabelSpec(group);
++        if (menu && (option->state & State_Enabled))
++        {
++          const bool blueSelection = pointerHover && (openSubmenuRow || (option->state & State_Selected));
++          lspec.normalColor = lspec.normalInactiveColor = getName(QColor(255, 255, 255, blueSelection ? 255 : 217));
++        }
++        if (menu)
++        {
++          const int leading = menuParent(menu, false) ? 1 : 9;
++          if (option->direction == Qt::RightToLeft) lspec.right += leading;
++          else lspec.left += leading;
++        }
+ 
+         const QComboBox *combo = qobject_cast<const QComboBox*>(widget);
+ 
+@@ -5795,7 +5952,25 @@
+           lspec.tispace = qMin(lspec.tispace, 6);
+ 
+         if (opt->menuItemType == QStyleOptionMenuItem::Separator)
+-          renderElement(painter,dspec.element+"-separator",option->rect);
++        {
++          if (menu)
++          {
++            const bool rtlSeparator = option->direction == Qt::RightToLeft;
++            const int leading = isSubmenu ? 16 : 18;
++            const qreal left = option->rect.left() + (rtlSeparator ? 16 : leading);
++            const qreal right = option->rect.right() - (rtlSeparator ? leading : 16);
++            const qreal lineY = option->rect.center().y() + 0.5;
++            painter->save();
++            painter->setRenderHint(QPainter::Antialiasing, true);
++            QPen separatorPen(QColor(255, 255, 255, 40));
++            separatorPen.setWidthF(1.0);
++            painter->setPen(separatorPen);
++            painter->drawLine(QPointF(left, lineY), QPointF(right, lineY));
++            painter->restore();
++          }
++          else
++            renderElement(painter,dspec.element+"-separator",option->rect);
++        }
+         //else if (opt->menuItemType == QStyleOptionMenuItem::TearOff)
+           //renderElement(painter,dspec.element+"-tearoff",option->rect,20,0);
+         else
+@@ -5819,6 +5994,20 @@
+             }
+           }
+ 
++          if (openSubmenuRow && !pointerHover && (option->state & State_Enabled))
++          {
++            const QRect highlightRect = option->rect.adjusted(6, 0, -6, 0);
++            QPainterPath highlightPath;
++            highlightPath.addRoundedRect(highlightRect, 6.0, 6.0);
++            painter->save();
++            painter->setRenderHint(QPainter::Antialiasing, true);
++            painter->fillPath(highlightPath, QColor(138, 141, 148, 66));
++            painter->restore();
++          }
++
++          painter->save();
++          if (menu)
++            painter->translate(option->direction == Qt::RightToLeft ? 1 : -1, 0);
+           QString txt = opt->text;
+           txt.replace('\n', ' '); // may be needed with combos
+           QString shortcutTxt;
+@@ -5832,7 +6021,7 @@
+             }
+           }
+ 
+-          int smallIconSize = pixelMetric(PM_SmallIconSize);
++          int smallIconSize = menu ? (isSubmenu ? 12 : 11) : pixelMetric(PM_SmallIconSize);
+           int talign = Qt::AlignVCenter | Qt::TextSingleLine;
+           if (!styleHint(SH_UnderlineShortcut, opt, widget))
+             talign |= Qt::TextHideMnemonic;
+@@ -5888,13 +6077,15 @@
+ 
+           /* label */
+           painter->save();
+-          painter->setFont(opt->font); // some apps (like TeXstudio) use special fonts
++          QFont menuFont = opt->font;
++          if (menu) menuFont.setPixelSize(isSubmenu ? 12 : 13);
++          painter->setFont(menu ? menuFont : opt->font); // preserve app font outside native menus
+           int checkSpace = 0;
+           if (!hideCheckBoxes
+               && ((widget && opt->menuHasCheckableItems)
+                   || opt->checkType != QStyleOptionMenuItem::NotCheckable)) // as in CT_MenuItem
+           {
+-            checkSpace = iw + pixelMetric(PM_CheckBoxLabelSpacing);
++            checkSpace = iw + (menu ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
+           }
+           int iconSpace = 0;
+           if (opt->icon.isNull() || hspec_.iconless_menu)
+@@ -5950,7 +6141,24 @@
+               }
+             }
+             QSize iconSize = combo != nullptr ? combo->iconSize() : QSize(smallIconSize, smallIconSize);
+-            QPixmap px = getPixmapFromIcon(opt->icon, getIconMode(state,isInactive,lspec), iconstate, iconSize);
++            QIcon nativeIcon = opt->icon;
++            if (menu)
++            {
++              const QString name = nativeIcon.name();
++              if (!name.isEmpty() && QIcon::hasThemeIcon(name + QStringLiteral("-symbolic")))
++                nativeIcon = QIcon::fromTheme(name + QStringLiteral("-symbolic"));
++              else if (name == QStringLiteral("preferences-desktop-wallpaper"))
++                nativeIcon = QIcon::fromTheme(QStringLiteral("view-preview"), nativeIcon);
++              else if (name == QStringLiteral("emblem-symbolic-link"))
++                nativeIcon = QIcon::fromTheme(QStringLiteral("insert-link"), nativeIcon);
++            }
++            QPixmap px = getPixmapFromIcon(nativeIcon, getIconMode(state,isInactive,lspec), iconstate, iconSize);
++            if (menu && !px.isNull())
++            {
++              QPainter iconPainter(&px);
++              iconPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
++              iconPainter.fillRect(px.rect(), QColor(255, 255, 255, state == 0 ? 110 : 255));
++            }
+             if (px.isNull()) // with a non-null icon
+               iconSpace = iconSize.width() + lspec.tispace;
+             QRect r = option->rect.adjusted(rtl ? 0 : iconSpace+checkSpace,
+@@ -6050,8 +6258,24 @@
+                                                                         0,
+                                                                         rtl ? 0 : -2,
+                                                                         0));
+-            drawPrimitive(rtl ? PE_IndicatorArrowLeft : PE_IndicatorArrowRight,
+-                          &o,painter);
++            // Tahoe menu submenus use a fine chevron, not the generic Qt arrow.
++            const QPointF center = o.rect.center() + QPointF(rtl ? 10.0 : -10.0, 0.0);
++            const qreal direction = rtl ? -1.0 : 1.0;
++            QPainterPath chevron;
++            chevron.moveTo(center.x() - direction * 1.5, center.y() - 3.0);
++            chevron.lineTo(center.x() + direction * 1.5, center.y());
++            chevron.lineTo(center.x() - direction * 1.5, center.y() + 3.0);
++            QPen pen((o.state & State_Enabled) ? QColor(255, 255, 255, 255)
++                                                : QColor(255, 255, 255, 110));
++            pen.setWidthF(1.4);
++            pen.setCapStyle(Qt::RoundCap);
++            pen.setJoinStyle(Qt::RoundJoin);
++            painter->save();
++            painter->setRenderHint(QPainter::Antialiasing, true);
++            painter->setPen(pen);
++            painter->setBrush(Qt::NoBrush);
++            painter->drawPath(chevron);
++            painter->restore();
+           }
+ 
+           /* checkbox or radio button */
+@@ -6066,7 +6290,30 @@
+                                                                             0,
+                                                                             rtl ? -lspec.right : 0,
+                                                                             0));
+-            if (opt->checkType == QStyleOptionMenuItem::Exclusive
++            if (menu)
++            {
++              if (opt->checked)
++              {
++                QPointF center = o.rect.center();
++                center += QPointF(0.0, 2.0);
++                QPainterPath tick;
++                tick.moveTo(center.x() - 3.5, center.y());
++                tick.lineTo(center.x() - 1.0, center.y() + 2.5);
++                tick.lineTo(center.x() + 4.0, center.y() - 3.5);
++                QPen tickPen((o.state & State_Enabled) ? QColor(255, 255, 255, 255)
++                                                        : QColor(255, 255, 255, 110));
++                tickPen.setWidthF(1.3);
++                tickPen.setCapStyle(Qt::RoundCap);
++                tickPen.setJoinStyle(Qt::RoundJoin);
++                painter->save();
++                painter->setRenderHint(QPainter::Antialiasing, true);
++                painter->setPen(tickPen);
++                painter->setBrush(Qt::NoBrush);
++                painter->drawPath(tick);
++                painter->restore();
++              }
++            }
++            else if (opt->checkType == QStyleOptionMenuItem::Exclusive
+                 // combo menu checkboxes are exclusive
+                 || combo != nullptr)
+             {
+@@ -6081,6 +6328,7 @@
+               drawPrimitive(PE_IndicatorCheckBox,&o,painter,widget);
+             }
+           }
++          painter->restore();
+         }
+       }
+ 
+@@ -13226,6 +13474,8 @@
+                   this block is called. Luckily, this workaround exists with Qt >= 5.12. */
+       if (widget && widget->testAttribute(Qt::WA_StyleSheetTarget))
+         return QCommonStyle::pixelMetric(metric,option,widget);
++      if (metric == PM_MenuVMargin && qobject_cast<const QMenu*>(widget))
++        return 4;
+ 
+       /* In Qt -> qcombobox.cpp, PM_MenuVMargin is used to add a
+          vertical margin to the combo menu but we don't want it. */
+@@ -14442,11 +14692,31 @@
+       if (opt) {
+         const QString group = "MenuItem";
+         const frame_spec fspec = getFrameSpec(group);
+-        const label_spec lspec = getLabelSpec(group);
++        label_spec lspec = getLabelSpec(group);
++        if (const QMenu *menu = qobject_cast<const QMenu*>(widget))
++        {
++          if (!menuParent(menu, false))
++          {
++            if (option->direction == Qt::RightToLeft) lspec.right += 9;
++            else lspec.left += 9;
++          }
++          if (menuParent(menu, false))
++          {
++            if (option->direction == Qt::RightToLeft) lspec.right += 1;
++            else lspec.left += 1;
++          }
++          else
++          {
++            if (option->direction == Qt::RightToLeft) lspec.left += 1;
++            else lspec.right += 1;
++          }
++        }
+         const size_spec sspec = getSizeSpec(group);
+ 
+         const QComboBox *combo = qobject_cast<const QComboBox*>(widget);
+-        int smallIconSize = pixelMetric(PM_SmallIconSize);
++        const QMenu *nativeMenu = qobject_cast<const QMenu*>(widget);
++        const int smallIconSize = nativeMenu
++            ? (menuParent(nativeMenu, false) ? 12 : 11) : pixelMetric(PM_SmallIconSize);
+ 
+         QSize iconSize;
+         if (combo != nullptr)
+@@ -14515,7 +14785,11 @@
+           }
+           else
+             s.setWidth(qMax(s.width(), contentsSize.width()));
+-          s.setHeight(qMax(s.height(), opt->fontMetrics.height() + 8)); // as in qcommonstyle.cpp
++          // Native Tahoe menus keep breathing room around SF Pro's short metrics.
++          // Preserve the application's font and combo/QML menu geometry.
++          const int textPadding = qobject_cast<const QMenu*>(widget) ? 9 : 8;
++          const int targetMenuRow = nativeMenu ? (menuParent(nativeMenu, false) ? 23 : 22) : 0;
++          s.setHeight(qMax(s.height(), qMax(QFontMetrics(f).height() + textPadding, targetMenuRow)));
+           s.rwidth() += shortcutSpace;
+         }
+ 
+@@ -14545,7 +14819,7 @@
+                 || opt->checkType != QStyleOptionMenuItem::NotCheckable))
+         {
+           int iw = qMin(smallIconSize, pixelMetric(PM_IndicatorWidth,option,widget)); // qMin as a precaution
+-          s.rwidth() += iw + pixelMetric(PM_CheckBoxLabelSpacing);
++          s.rwidth() += iw + (qobject_cast<const QMenu*>(widget) ? 0 : pixelMetric(PM_CheckBoxLabelSpacing));
+           /* for the height, see if there's really a check/radio button */
+           if (opt->menuItemType != QStyleOptionMenuItem::Separator // exclude combo menu separators
+               && (opt->checkType == QStyleOptionMenuItem::Exclusive
+diff -Naur --strip-trailing-cr patch-verify/Kvantum/style/polishing.cpp patch-check-20261111b/Kvantum/style/polishing.cpp
+--- a/Kvantum/style/polishing.cpp	2026-11-11 13:54:26.448455700 +0100
++++ b/Kvantum/style/polishing.cpp	2026-11-11 00:26:03.319997400 +0100
+@@ -46,6 +46,7 @@
+ namespace Kvantum
+ {
+ 
++
+ /* WARNING: For easily distinguishing animated widgets (-> "eventFiltering.cpp")
+             from others that also have event filter, event filters should be
+             installed with care. */
+@@ -1061,6 +1062,9 @@
+ {
+   if (widget)
+   {
++    if (qobject_cast<QMenu*>(widget))
++      widget->setProperty("_kvantum_menu_surface", QVariant());
++
+ 
+     /*widget->setAttribute(Qt::WA_Hover, false);*/
+ 
+diff -Naur --strip-trailing-cr patch-verify/Kvantum/style/qt5/ThemeConfig5.cpp patch-check-20261111b/Kvantum/style/qt5/ThemeConfig5.cpp
+--- a/Kvantum/style/qt5/ThemeConfig5.cpp	2026-11-11 13:54:26.492990400 +0100
++++ b/Kvantum/style/qt5/ThemeConfig5.cpp	2026-11-11 00:26:03.323542500 +0100
+@@ -860,7 +860,7 @@
+ 
+   v = getValue(KSL("General"),KSL("submenu_overlap"));
+   if (v.isValid()) // -1 by default
+-    r.submenu_overlap = qMin(qMax(v.toInt(),0),16);
++    r.submenu_overlap = qMin(qMax(v.toInt(),0),32);
+ 
+   v = getValue(KSL("General"),KSL("submenu_delay"));
+   if (v.isValid()) // 250 by default
+diff -Naur --strip-trailing-cr patch-verify/Kvantum/style/themeconfig/ThemeConfig.cpp patch-check-20261111b/Kvantum/style/themeconfig/ThemeConfig.cpp
+--- a/Kvantum/style/themeconfig/ThemeConfig.cpp	2026-11-11 13:54:26.516838400 +0100
++++ b/Kvantum/style/themeconfig/ThemeConfig.cpp	2026-11-11 00:26:03.322693300 +0100
+@@ -860,7 +860,7 @@
+ 
+   v = getValue(KSL("General"),KSL("submenu_overlap"));
+   if (v.isValid()) // -1 by default
+-    r.submenu_overlap = qMin(qMax(v.toInt(),0),16);
++    r.submenu_overlap = qMin(qMax(v.toInt(),0),32);
+ 
+   v = getValue(KSL("General"),KSL("submenu_delay"));
+   if (v.isValid()) // 250 by default

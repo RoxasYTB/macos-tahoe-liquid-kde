@@ -13,7 +13,7 @@ from pathlib import Path, PurePosixPath
 from distro import is_debian_family, qt6_plugins_dir
 from glass_surfaces import apply_kvantum_surface_defaults
 from steps._helpers import (
-    HOME, build_dir, cmake_build, fail, have, info, kw_write, offline, ok,
+    DATA_HOME, HOME, build_dir, cmake_build, fail, have, info, kw_write, offline, ok,
     reinstall, sudo_install_file, sudo_remove, warn,
 )
 from utils import run_user
@@ -34,6 +34,16 @@ ENGINE_MARKER = Path("/usr/share/mac-tahoe-liquid-kde/kvantum-engine.json")
 ENGINE_LICENSE = Path(
     "/usr/share/licenses/mac-tahoe-liquid-kde/Kvantum.txt"
 )
+ENGINE_OVERLAY_ROOT = DATA_HOME / "mac-tahoe-liquid-kde/qt6/plugins"
+ENGINE_OVERLAY_PLUGIN = ENGINE_OVERLAY_ROOT / "styles/libkvantum.so"
+ENGINE_OVERLAY_MARKER = DATA_HOME / "mac-tahoe-liquid-kde/kvantum-engine-overlay.json"
+ENGINE_OVERLAY_LICENSE = DATA_HOME / "mac-tahoe-liquid-kde/licenses/Kvantum.txt"
+ENGINE_OVERLAY_ENV_MARKER = "# Managed by mac-tahoe-liquid-kde: Kvantum Qt6 menu styling\n"
+
+
+def _engine_overlay_env_path() -> Path:
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config")
+    return config_home / "plasma-workspace/env/mac-tahoe-kvantum-style.sh"
 
 
 def _sha256(path: Path) -> str:
@@ -101,6 +111,171 @@ def _engine_matches_ownership_marker() -> bool:
         return False
 
 
+def _overlay_engine_matches_ownership_marker() -> bool:
+    if ENGINE_OVERLAY_MARKER.is_symlink():
+        return False
+    try:
+        marker = json.loads(ENGINE_OVERLAY_MARKER.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return False
+    if not isinstance(marker, dict) or not _marker_plugin_hashes(marker):
+        return False
+    if not ENGINE_OVERLAY_PLUGIN.exists() and not ENGINE_OVERLAY_PLUGIN.is_symlink():
+        return marker.get("state") == "pending"
+    if not ENGINE_OVERLAY_PLUGIN.is_file() or ENGINE_OVERLAY_PLUGIN.is_symlink():
+        return False
+    try:
+        return _sha256(ENGINE_OVERLAY_PLUGIN) in _marker_plugin_hashes(marker)
+    except OSError:
+        return False
+
+
+def _overlay_env_owned(path: Path | None = None) -> bool:
+    path = path or _engine_overlay_env_path()
+    try:
+        return not path.is_symlink() and path.read_text(encoding="utf-8").startswith(
+            ENGINE_OVERLAY_ENV_MARKER
+        )
+    except (OSError, UnicodeError):
+        return False
+
+
+def _overlay_license_owned(marker: object) -> bool:
+    if not isinstance(marker, dict) or not ENGINE_OVERLAY_LICENSE.is_file() or ENGINE_OVERLAY_LICENSE.is_symlink():
+        return False
+    hashes = {
+        value for value in (marker.get("license_sha256"), marker.get("previous_license_sha256"))
+        if isinstance(value, str) and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    }
+    try:
+        return _sha256(ENGINE_OVERLAY_LICENSE) in hashes
+    except OSError:
+        return False
+
+
+def _overlay_env_contents() -> str:
+    plugin_path = str(ENGINE_OVERLAY_ROOT).replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+    return (
+        ENGINE_OVERLAY_ENV_MARKER
+        + f'export QT_PLUGIN_PATH="{plugin_path}${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
+    )
+
+
+def _set_session_qt_plugin_path(add: bool) -> bool:
+    show = run_user(["systemctl", "--user", "show-environment"], capture_output=True, text=True)
+    values = {}
+    if show.returncode == 0:
+        for line in show.stdout.splitlines():
+            key, separator, value = line.partition("=")
+            if separator:
+                values[key] = value
+
+    paths = []
+    for value in (values.get("QT_PLUGIN_PATH", ""), os.environ.get("QT_PLUGIN_PATH", "")):
+        for path in value.split(":"):
+            if path and path not in paths:
+                paths.append(path)
+    overlay = str(ENGINE_OVERLAY_ROOT)
+    if add and overlay in paths:
+        paths.remove(overlay)
+    if add:
+        paths.insert(0, overlay)
+    else:
+        paths = [path for path in paths if path != overlay]
+
+    updated = ":".join(paths)
+    if updated:
+        os.environ["QT_PLUGIN_PATH"] = updated
+        command = ["systemctl", "--user", "set-environment", f"QT_PLUGIN_PATH={updated}"]
+    else:
+        os.environ.pop("QT_PLUGIN_PATH", None)
+        command = ["systemctl", "--user", "unset-environment", "QT_PLUGIN_PATH"]
+    return run_user(command, capture_output=True, text=True).returncode == 0
+
+
+def _install_user_overlay_engine() -> bool:
+    artifact = ENGINE_BUILD / "style/libkvantum.so"
+    license_source = ENGINE_SOURCE / "Kvantum/COPYING"
+    if not artifact.is_file() or not license_source.is_file():
+        fail(tr('Kvantum Qt 6 overlay build artefacts missing'))
+        return False
+
+    env_path = _engine_overlay_env_path()
+    env_exists = env_path.exists() or env_path.is_symlink()
+    if env_exists and not _overlay_env_owned(env_path):
+        fail(tr('Custom Plasma environment file preserved: {value1}', value1=env_path))
+        return False
+
+    marker_exists = ENGINE_OVERLAY_MARKER.exists() or ENGINE_OVERLAY_MARKER.is_symlink()
+    previous_marker: dict = {}
+    if marker_exists and not _overlay_engine_matches_ownership_marker():
+        fail(tr('Unowned Kvantum overlay preserved: {value1}', value1=ENGINE_OVERLAY_PLUGIN))
+        return False
+    if marker_exists:
+        try:
+            loaded_marker = json.loads(ENGINE_OVERLAY_MARKER.read_text(encoding="utf-8"))
+            previous_marker = loaded_marker if isinstance(loaded_marker, dict) else {}
+        except (OSError, ValueError, TypeError):
+            fail(tr('Kvantum overlay marker could not be read; preserving overlay files'))
+            return False
+    plugin_exists = ENGINE_OVERLAY_PLUGIN.exists() or ENGINE_OVERLAY_PLUGIN.is_symlink()
+    if plugin_exists and not _overlay_engine_matches_ownership_marker():
+        fail(tr('Unowned Kvantum overlay preserved: {value1}', value1=ENGINE_OVERLAY_PLUGIN))
+        return False
+    license_exists = ENGINE_OVERLAY_LICENSE.exists() or ENGINE_OVERLAY_LICENSE.is_symlink()
+    if license_exists and not _overlay_license_owned(previous_marker):
+        fail(tr('Unowned Kvantum overlay license preserved: {value1}', value1=ENGINE_OVERLAY_LICENSE))
+        return False
+
+    previous_hash = _sha256(ENGINE_OVERLAY_PLUGIN) if plugin_exists else None
+    plugin_hash = _sha256(artifact)
+    license_hash = _sha256(license_source)
+    marker_data = {
+        "version": ENGINE_VERSION,
+        "commit": ENGINE_COMMIT,
+        "source_sha256": ENGINE_SHA256,
+        "plugin_sha256": plugin_hash,
+        "license_sha256": license_hash,
+    }
+    pending_data = {**marker_data, "state": "pending"}
+    if previous_hash and previous_hash != plugin_hash:
+        pending_data["previous_plugin_sha256"] = previous_hash
+    previous_license_hash = previous_marker.get("license_sha256")
+    if isinstance(previous_license_hash, str) and previous_license_hash != license_hash:
+        pending_data["previous_license_sha256"] = previous_license_hash
+
+    try:
+        ENGINE_WORK.mkdir(parents=True, exist_ok=True)
+        pending_source = ENGINE_WORK / "kvantum-overlay.pending.json"
+        final_source = ENGINE_WORK / "kvantum-overlay.json"
+        license_dest_source = ENGINE_WORK / "Kvantum-overlay.txt"
+        env_source = ENGINE_WORK / "kvantum-overlay-env.sh"
+        pending_source.write_text(json.dumps(pending_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        final_source.write_text(json.dumps(marker_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        shutil.copy2(license_source, license_dest_source)
+        env_source.write_text(_overlay_env_contents(), encoding="utf-8")
+        env_source.chmod(0o644)
+    except OSError as exc:
+        fail(tr('Kvantum overlay metadata could not be prepared ({value1})', value1=exc))
+        return False
+
+    if not sudo_install_file(pending_source, ENGINE_OVERLAY_MARKER, tr('Kvantum overlay ownership transaction prepared'), user_owned=True):
+        return False
+    if not sudo_install_file(artifact, ENGINE_OVERLAY_PLUGIN, tr('Kvantum Qt 6 user overlay installed'), user_owned=True):
+        return False
+    if not sudo_install_file(license_dest_source, ENGINE_OVERLAY_LICENSE, tr('Kvantum overlay license installed'), user_owned=True):
+        return False
+    if not sudo_install_file(final_source, ENGINE_OVERLAY_MARKER, tr('Kvantum overlay ownership marker installed'), user_owned=True):
+        return False
+    if not sudo_install_file(env_source, env_path, tr('Plasma Kvantum overlay startup integration'), user_owned=True):
+        return False
+    if not _set_session_qt_plugin_path(True):
+        warn(tr('Kvantum plugin path was not added to the current Plasma session'))
+    warn(tr('Restart Plasma to load the Tahoe Kvantum menu styling'))
+    return True
+
+
 def _bundled_engine_required() -> bool:
     """Whether this host needs our offline Qt 6 engine.
 
@@ -116,8 +291,20 @@ def _bundled_engine_required() -> bool:
     return _engine_matches_ownership_marker()
 
 
+def _user_overlay_required() -> bool:
+    """Use a user plugin path when Debian owns the installed Kvantum engine.
+
+    The overlay keeps the distro file intact while making the Tahoe-specific
+    submenu selection available to Plasma after the next login.
+    """
+    if not is_debian_family():
+        return False
+    destination = _engine_destination()
+    return destination.is_file() and not _engine_matches_ownership_marker()
+
+
 def deps():
-    if _bundled_engine_required():
+    if _bundled_engine_required() or _user_overlay_required():
         return [
             "qmake6:qt6-base",
             "qt6-svg-cmake:qt6-svg",
@@ -169,6 +356,20 @@ def _extract_bundled_engine() -> bool:
         extracted = staging / ENGINE_SOURCE.name
         if not (extracted / "Kvantum/CMakeLists.txt").is_file():
             raise ValueError(tr('Kvantum/CMakeLists.txt missing from archive'))
+        patch_file = offline("kvantum-engine", "tahoe-menu-selection.patch")
+        if not patch_file.is_file():
+            raise ValueError(tr('Kvantum menu-selection patch missing: {value1}', value1=patch_file))
+        patch_result = subprocess.run(
+            ["patch", "--batch", "--forward", "-p1", "-i", str(patch_file)],
+            cwd=extracted,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if patch_result.returncode != 0:
+            raise ValueError(
+                tr('Kvantum menu-selection patch failed ({value1})', value1=patch_result.stderr.strip() or patch_result.stdout.strip())
+            )
         shutil.rmtree(ENGINE_SOURCE, ignore_errors=True)
         extracted.replace(ENGINE_SOURCE)
         return True
@@ -180,13 +381,13 @@ def _extract_bundled_engine() -> bool:
 
 
 def build_artifacts() -> list[Path]:
-    if not _bundled_engine_required():
+    if not (_bundled_engine_required() or _user_overlay_required()):
         return []
     return [ENGINE_BUILD / "style/libkvantum.so"]
 
 
 def build() -> None:
-    if not _bundled_engine_required():
+    if not (_bundled_engine_required() or _user_overlay_required()):
         return
     if not _extract_bundled_engine():
         return
@@ -200,6 +401,8 @@ def build() -> None:
 
 def _install_bundled_engine() -> bool:
     if not _bundled_engine_required():
+        if _user_overlay_required():
+            return _install_user_overlay_engine()
         return True
     artifact = ENGINE_BUILD / "style/libkvantum.so"
     license_source = ENGINE_SOURCE / "Kvantum/COPYING"
@@ -336,6 +539,61 @@ def install() -> None:
     info(tr('Kvantum Qt styling installed'))
 
 
+def _remove_user_overlay_engine() -> None:
+    marker_exists = ENGINE_OVERLAY_MARKER.exists() or ENGINE_OVERLAY_MARKER.is_symlink()
+    env_path = _engine_overlay_env_path()
+    if not marker_exists:
+        if _overlay_env_owned(env_path):
+            if sudo_remove(env_path, tr('Plasma Kvantum overlay startup integration')):
+                _set_session_qt_plugin_path(False)
+        return
+    if ENGINE_OVERLAY_MARKER.is_symlink():
+        fail(tr('Kvantum overlay marker is a symlink; retaining overlay for recovery'))
+        return
+    try:
+        marker = json.loads(ENGINE_OVERLAY_MARKER.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        fail(tr('Kvantum overlay marker could not be verified; retaining overlay for recovery ({value1})', value1=exc))
+        return
+    owned_hashes = _marker_plugin_hashes(marker)
+    if not owned_hashes:
+        fail(tr('Kvantum overlay marker has no valid plugin digest; retaining overlay for recovery'))
+        return
+
+    if env_path.exists() or env_path.is_symlink():
+        if _overlay_env_owned(env_path):
+            removed = sudo_remove(env_path, tr('Plasma Kvantum overlay startup integration'))
+            if not removed and env_path.exists():
+                fail(tr('Kvantum overlay startup integration could not be removed; retaining overlay marker'))
+                return
+            _set_session_qt_plugin_path(False)
+        else:
+            warn(tr('Custom Plasma environment file preserved: {value1}', value1=env_path))
+            return
+
+    plugin_owned = False
+    if ENGINE_OVERLAY_PLUGIN.is_file() and not ENGINE_OVERLAY_PLUGIN.is_symlink():
+        try:
+            plugin_owned = _sha256(ENGINE_OVERLAY_PLUGIN) in owned_hashes
+        except OSError as exc:
+            fail(tr('Kvantum overlay ownership could not be verified; retaining overlay for recovery ({value1})', value1=exc))
+            return
+    if plugin_owned:
+        removed = sudo_remove(ENGINE_OVERLAY_PLUGIN, tr('Kvantum Qt 6 user overlay'))
+        if not removed and ENGINE_OVERLAY_PLUGIN.exists():
+            fail(tr('Kvantum user overlay could not be removed; retaining marker and license'))
+            return
+    elif ENGINE_OVERLAY_PLUGIN.exists() or ENGINE_OVERLAY_PLUGIN.is_symlink():
+        warn(tr('Kvantum user overlay changed since installation; leaving it in place'))
+
+    sudo_remove(ENGINE_OVERLAY_MARKER, tr('Kvantum overlay ownership marker'))
+    if ENGINE_OVERLAY_LICENSE.exists() or ENGINE_OVERLAY_LICENSE.is_symlink():
+        if _overlay_license_owned(marker):
+            sudo_remove(ENGINE_OVERLAY_LICENSE, tr('Kvantum overlay license'))
+        else:
+            warn(tr('Kvantum overlay license changed since installation; leaving it in place'))
+
+
 def _remove_bundled_engine() -> None:
     if not ENGINE_MARKER.is_file():
         return
@@ -413,6 +671,7 @@ def uninstall() -> None:
         ok(tr('MacTahoeLiquidKde themes removed'))
     else:
         ok(tr('MacTahoeLiquidKde themes (not installed)'))
+    _remove_user_overlay_engine()
     _remove_bundled_engine()
     shutil.rmtree(ENGINE_WORK, ignore_errors=True)
     info(tr('Kvantum Qt styling removed'))

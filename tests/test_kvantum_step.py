@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -26,7 +28,7 @@ def test_neon_uses_build_deps_when_qt6_engine_is_missing(monkeypatch, tmp_path):
     assert "kvantummanager:kvantum" not in deps
 
 
-def test_neon_keeps_unmarked_distro_qt6_engine(monkeypatch, tmp_path):
+def test_neon_builds_user_overlay_for_unmarked_distro_qt6_engine(monkeypatch, tmp_path):
     from steps import kvantum
 
     destination = tmp_path / "plugins/styles/libkvantum.so"
@@ -34,9 +36,260 @@ def test_neon_keeps_unmarked_distro_qt6_engine(monkeypatch, tmp_path):
     destination.write_bytes(b"distro-owned")
     _neon(monkeypatch, kvantum, destination)
     monkeypatch.setattr(kvantum, "ENGINE_MARKER", tmp_path / "missing-marker")
+    monkeypatch.setattr(kvantum, "ENGINE_MARKER", tmp_path / "missing-marker")
 
-    assert kvantum.deps() == []
-    assert kvantum.build_artifacts() == []
+    assert kvantum._user_overlay_required() is True
+    assert "qt6-svg-cmake:qt6-svg" in kvantum.deps()
+    assert kvantum.build_artifacts() == [kvantum.ENGINE_BUILD / "style/libkvantum.so"]
+
+
+def test_distro_overlay_installs_user_plugin_without_replacing_system_engine(
+        monkeypatch, tmp_path):
+    from steps import kvantum
+    import shutil
+
+    system_plugin = tmp_path / "system/plugins/styles/libkvantum.so"
+    system_plugin.parent.mkdir(parents=True)
+    system_plugin.write_bytes(b"distro plugin")
+    artifact = tmp_path / "build/style/libkvantum.so"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"tahoe patched plugin")
+    source = tmp_path / "source"
+    license_source = source / "Kvantum/COPYING"
+    license_source.parent.mkdir(parents=True)
+    license_source.write_text("GPL-3.0\n")
+    overlay_root = tmp_path / "data/mac-tahoe/qt6/plugins"
+    overlay_plugin = overlay_root / "styles/libkvantum.so"
+    marker = tmp_path / "data/mac-tahoe/kvantum-engine-overlay.json"
+    license_dest = tmp_path / "data/mac-tahoe/licenses/Kvantum.txt"
+    env = tmp_path / "config/plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+    work = tmp_path / "build-stage"
+    calls = []
+    session_calls = []
+
+    monkeypatch.setattr(kvantum, "_bundled_engine_required", lambda: False)
+    monkeypatch.setattr(kvantum, "_user_overlay_required", lambda: True)
+    monkeypatch.setattr(kvantum, "ENGINE_BUILD", tmp_path / "build")
+    monkeypatch.setattr(kvantum, "ENGINE_SOURCE", source)
+    monkeypatch.setattr(kvantum, "ENGINE_WORK", work)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_ROOT", overlay_root)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_PLUGIN", overlay_plugin)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", marker)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_LICENSE", license_dest)
+    monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    monkeypatch.setenv("QT_PLUGIN_PATH", "/system/qt6/plugins")
+    monkeypatch.setattr(
+        kvantum,
+        "run_user",
+        lambda command, **_kwargs: session_calls.append(command)
+        or SimpleNamespace(returncode=0, stdout="QT_PLUGIN_PATH=/system/qt6/plugins\n"),
+    )
+
+    def install_file(src, dest, label, *, user_owned=False):
+        calls.append((Path(dest), user_owned))
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        return True
+
+    monkeypatch.setattr(kvantum, "sudo_install_file", install_file)
+
+    assert kvantum._install_bundled_engine() is True
+    assert system_plugin.read_bytes() == b"distro plugin"
+    assert overlay_plugin.read_bytes() == b"tahoe patched plugin"
+    assert json.loads(marker.read_text())["plugin_sha256"] == hashlib.sha256(
+        b"tahoe patched plugin"
+    ).hexdigest()
+    assert str(overlay_root) in env.read_text()
+    assert "${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" in env.read_text()
+    assert len(calls) == 5 and all(user_owned for _dest, user_owned in calls)
+    assert os.environ["QT_PLUGIN_PATH"].startswith(f"{overlay_root}:")
+    assert session_calls[-1][2] == "set-environment"
+    assert session_calls[-1][3].startswith(f"QT_PLUGIN_PATH={overlay_root}:")
+
+
+def test_session_qt_plugin_path_reaches_plasma_restart_and_is_removed(
+        monkeypatch, tmp_path):
+    from steps import kvantum
+
+    overlay = tmp_path / "qt6/plugins"
+    manager_environment = {"QT_PLUGIN_PATH": "/system/qt6/plugins:/other/plugins"}
+
+    def run_user(command, **_kwargs):
+        if command[2] == "show-environment":
+            stdout = "".join(f"{key}={value}\n" for key, value in manager_environment.items())
+            return SimpleNamespace(returncode=0, stdout=stdout)
+        if command[2] == "set-environment":
+            key, _, value = command[3].partition("=")
+            manager_environment[key] = value
+        elif command[2] == "unset-environment":
+            manager_environment.pop(command[3], None)
+        return SimpleNamespace(returncode=0, stdout="")
+
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_ROOT", overlay)
+    monkeypatch.setattr(kvantum, "run_user", run_user)
+    monkeypatch.delenv("QT_PLUGIN_PATH", raising=False)
+
+    assert kvantum._set_session_qt_plugin_path(True) is True
+    expected = f"{overlay}:/system/qt6/plugins:/other/plugins"
+    assert os.environ["QT_PLUGIN_PATH"] == expected
+    assert manager_environment["QT_PLUGIN_PATH"] == expected
+
+    assert kvantum._set_session_qt_plugin_path(False) is True
+    assert os.environ["QT_PLUGIN_PATH"] == "/system/qt6/plugins:/other/plugins"
+    assert manager_environment["QT_PLUGIN_PATH"] == "/system/qt6/plugins:/other/plugins"
+
+
+def test_distro_overlay_preserves_unmanaged_plasma_environment_file(
+        monkeypatch, tmp_path):
+    from steps import kvantum
+
+    env = tmp_path / "config/plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+    env.parent.mkdir(parents=True)
+    env.write_text("# user-owned settings\nexport QT_PLUGIN_PATH=/custom\n")
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", tmp_path / "overlay.json")
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_PLUGIN", tmp_path / "plugins/libkvantum.so")
+    monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    artifact = tmp_path / "build/style/libkvantum.so"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"plugin")
+    source = tmp_path / "source/Kvantum/COPYING"
+    source.parent.mkdir(parents=True)
+    source.write_text("GPL-3.0\n")
+    monkeypatch.setattr(kvantum, "ENGINE_BUILD", tmp_path / "build")
+    monkeypatch.setattr(kvantum, "ENGINE_SOURCE", tmp_path / "source")
+    monkeypatch.setattr(kvantum, "ENGINE_WORK", tmp_path / "stage")
+    failures = []
+    monkeypatch.setattr(kvantum, "fail", failures.append)
+
+    assert kvantum._install_user_overlay_engine() is False
+    assert env.read_text().startswith("# user-owned settings")
+    assert not (tmp_path / "plugins/libkvantum.so").exists()
+    assert failures
+
+
+def test_distro_overlay_recovers_after_pending_marker_before_plugin_copy(
+        monkeypatch, tmp_path):
+    from steps import kvantum
+    import shutil
+
+    artifact = tmp_path / "build/style/libkvantum.so"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"patched plugin")
+    license_source = tmp_path / "source/Kvantum/COPYING"
+    license_source.parent.mkdir(parents=True)
+    license_source.write_text("GPL-3.0\n")
+    overlay_plugin = tmp_path / "overlay/styles/libkvantum.so"
+    marker = tmp_path / "overlay/kvantum-engine-overlay.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text(json.dumps({
+        "state": "pending",
+        "plugin_sha256": hashlib.sha256(b"patched plugin").hexdigest(),
+    }))
+    env = tmp_path / "config/plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+    env.parent.mkdir(parents=True)
+    env.write_text(kvantum.ENGINE_OVERLAY_ENV_MARKER + "export QT_PLUGIN_PATH=/old\n")
+
+    monkeypatch.setattr(kvantum, "ENGINE_BUILD", tmp_path / "build")
+    monkeypatch.setattr(kvantum, "ENGINE_SOURCE", tmp_path / "source")
+    monkeypatch.setattr(kvantum, "ENGINE_WORK", tmp_path / "stage")
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_ROOT", tmp_path / "overlay")
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_PLUGIN", overlay_plugin)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", marker)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_LICENSE", tmp_path / "overlay/licenses/Kvantum.txt")
+    monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    monkeypatch.setattr(
+        kvantum,
+        "run_user",
+        lambda command, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="QT_PLUGIN_PATH=/old\n" if command[2] == "show-environment" else "",
+        ),
+    )
+
+    def install_file(src, dest, _label, *, user_owned=False):
+        assert user_owned is True
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        return True
+
+    monkeypatch.setattr(kvantum, "sudo_install_file", install_file)
+    warnings = []
+    monkeypatch.setattr(kvantum, "warn", warnings.append)
+
+    assert kvantum._install_user_overlay_engine() is True
+    assert overlay_plugin.read_bytes() == b"patched plugin"
+    assert json.loads(marker.read_text()).get("state") is None
+    assert warnings
+
+
+def test_uninstall_removes_owned_overlay_but_preserves_distro_plugin(
+        monkeypatch, tmp_path):
+    from steps import kvantum
+
+    system_plugin = tmp_path / "system/libkvantum.so"
+    system_plugin.parent.mkdir(parents=True)
+    system_plugin.write_bytes(b"distro plugin")
+    overlay = tmp_path / "overlay/styles/libkvantum.so"
+    overlay.parent.mkdir(parents=True)
+    overlay.write_bytes(b"tahoe plugin")
+    marker = tmp_path / "overlay/kvantum-engine-overlay.json"
+    marker.write_text(json.dumps({
+        "plugin_sha256": hashlib.sha256(b"tahoe plugin").hexdigest(),
+        "license_sha256": hashlib.sha256(b"GPL-3.0\n").hexdigest(),
+        "version": kvantum.ENGINE_VERSION,
+    }))
+    license_file = tmp_path / "overlay/licenses/Kvantum.txt"
+    license_file.parent.mkdir()
+    license_file.write_text("GPL-3.0\n")
+    env = tmp_path / "config/plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+    env.parent.mkdir(parents=True)
+    env.write_text(kvantum.ENGINE_OVERLAY_ENV_MARKER + "export QT_PLUGIN_PATH=/overlay\n")
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_PLUGIN", overlay)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", marker)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_LICENSE", license_file)
+    monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    monkeypatch.setattr(
+        kvantum, "sudo_remove",
+        lambda path, _label=None: Path(path).unlink(missing_ok=True) or True,
+    )
+
+    kvantum._remove_user_overlay_engine()
+
+    assert system_plugin.read_bytes() == b"distro plugin"
+    assert not overlay.exists()
+    assert not marker.exists()
+    assert not license_file.exists()
+    assert not env.exists()
+
+
+def test_uninstall_retains_overlay_when_environment_is_unmanaged(
+        monkeypatch, tmp_path):
+    from steps import kvantum
+
+    overlay = tmp_path / "overlay/styles/libkvantum.so"
+    overlay.parent.mkdir(parents=True)
+    overlay.write_bytes(b"tahoe plugin")
+    marker = tmp_path / "overlay/kvantum-engine-overlay.json"
+    marker.write_text(json.dumps({
+        "plugin_sha256": hashlib.sha256(b"tahoe plugin").hexdigest(),
+    }))
+    env = tmp_path / "config/plasma-workspace/env/mac-tahoe-kvantum-style.sh"
+    env.parent.mkdir(parents=True)
+    env.write_text("# custom\nexport QT_PLUGIN_PATH=/custom\n")
+    warnings = []
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_PLUGIN", overlay)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_MARKER", marker)
+    monkeypatch.setattr(kvantum, "ENGINE_OVERLAY_LICENSE", tmp_path / "license")
+    monkeypatch.setattr(kvantum, "_engine_overlay_env_path", lambda: env)
+    monkeypatch.setattr(kvantum, "warn", warnings.append)
+    monkeypatch.setattr(kvantum, "sudo_remove", lambda *_args: pytest.fail("unexpected removal"))
+
+    kvantum._remove_user_overlay_engine()
+
+    assert overlay.is_file()
+    assert marker.is_file()
+    assert env.read_text().startswith("# custom")
+    assert warnings
 
 
 def test_bundled_archive_extracts_only_after_digest_check(monkeypatch, tmp_path):
@@ -50,6 +303,10 @@ def test_bundled_archive_extracts_only_after_digest_check(monkeypatch, tmp_path)
     assert kvantum._extract_bundled_engine() is True
     assert (source / "Kvantum/CMakeLists.txt").is_file()
     assert (source / "Kvantum/COPYING").is_file()
+    patched_style = (source / "Kvantum/style/Kvantum.cpp").read_text()
+    assert "tahoeChildSelection" in patched_style
+    assert "menu->menuAction()->associatedObjects()" in patched_style
+    assert "QColor selectionColor(85, 111, 196)" in patched_style
 
     corrupt = tmp_path / "Kvantum-corrupt.tar.xz"
     corrupt.write_bytes(kvantum.ENGINE_ARCHIVE.read_bytes() + b"corrupt")
