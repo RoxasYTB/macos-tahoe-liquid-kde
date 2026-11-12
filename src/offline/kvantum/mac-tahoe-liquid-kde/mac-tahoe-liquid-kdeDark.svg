@@ -5055,7 +5055,7 @@
      y="0"
      x="0" />
   <path
-     d="m 156,515.99998 h 48 v 48.00004 h -48 z"
+     d="M 159,516 H 201 A 3,3 0 0 1 204,519 V 561 A 3,3 0 0 1 201,564 H 159 A 3,3 0 0 1 156,561 V 519 A 3,3 0 0 1 159,516 Z"
      id="menu-normal"
      style="opacity:0.48;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none" />
   <g
@@ -5063,7 +5063,7 @@
      id="menu-normal-left">
     <path
        d="m 116.257,703.753 h 6 v 48 h -6 z"
-       style="opacity:0.48;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:0.54;fill:#34373e;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        id="path9036" />
     <g transform="matrix(0.6666671111,0,0,1,18.25693217,187.75301)">
       <rect x="147" y="515.99999" width=".75" height="48" fill="#000000" opacity=".18" />
@@ -5075,7 +5075,7 @@
      id="menu-normal-topleft"
      style="opacity:1;stroke:none;stroke-width:1">
     <path
-       style="opacity:0.48;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:0.54;fill:#34373e;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        d="m 122.25573,698.75378 c -3.32289,10e-4 -5.99768,2.6768 -5.99768,6.00001 h 6.00002 z"
        id="path3597" />
     <g transform="matrix(0.6666681333,0,0,0.6666681333,18.2578335,360.753007)">
@@ -5497,7 +5497,7 @@
     <path
        id="menuitem-normal-left2"
        d="M 184,504.00005 V 512 h -8 v -8 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="menuitem-normal-bottomleft"
@@ -5505,7 +5505,7 @@
     <path
        id="menuitem-normal-bottomleft2"
        d="m 184,520 c -8,0 -8,-8 -8,-8 h 8 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="menuitem-normal-topleft"
@@ -5513,7 +5513,7 @@
     <path
        id="menuitem-normal-topleft2"
        d="m 176,504 c 0,0 0,-8 8,-8 v 8 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="menuitem-normal-bottom"
@@ -5521,7 +5521,7 @@
     <path
        id="menuitem-normal-bottom2"
        d="m 209,512 h 7.99995 v 8 h -8 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="menuitem-normal-top"
@@ -5529,19 +5529,19 @@
     <path
        id="menuitem-normal-top2"
        d="M 216.99995,504 H 209 v -8 h 8 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <path
      id="menuitem-normal"
      d="m 248.41865,544.62801 v -8 h 8 v 8 z"
-     style="fill:#315bef;fill-opacity:1" />
+     style="fill:#b65cda;fill-opacity:0.36" />
   <g
      id="menuitem-normal-right"
      transform="translate(64.418654,32.628013)">
     <path
        id="menuitem-normal-right2"
        d="m 192,504 v 7.99995 h 8 v -8 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="menuitem-normal-bottomright"
@@ -5549,7 +5549,7 @@
     <path
        id="menuitem-normal-bottomright2"
        d="M 192,519.99989 C 200,520 199.99979,512 199.99979,512 H 192 Z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="menuitem-normal-topright"
@@ -5557,7 +5557,7 @@
     <path
        id="menuitem-normal-topright2"
        d="M 199.99979,503.99989 C 199.99979,503.99989 200,496 192,496 v 7.99978 z"
-       style="opacity:1;fill:#315bef;fill-opacity:1" />
+       style="opacity:1;fill:#b65cda;fill-opacity:0.36" />
   </g>
   <g
      id="tab-normal-topleft"

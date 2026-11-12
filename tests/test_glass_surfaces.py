@@ -178,7 +178,7 @@ def test_tahoe_dark_kvantum_menus_remove_black_fill(tmp_path, monkeypatch):
     assert 0.48 not in fills
 
 
-def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
+def test_tahoe_dark_kvantum_keeps_only_subtle_menu_veil(tmp_path, monkeypatch):
     import glass_surfaces
     monkeypatch.setattr(glass_surfaces, "default_wallpaper", lambda: "MacTahoe")
     source = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.svg"
@@ -194,7 +194,9 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
     root = ET.parse(target).getroot()
     menu = next(node for node in root.iter() if node.get("id") == "menu-normal")
     menu_style = dict(part.split(":", 1) for part in menu.get("style", "").split(";") if ":" in part)
-    assert float(menu_style["opacity"]) == 0.0
+    source_menu = next(node for node in source_root.iter() if node.get("id") == "menu-normal")
+    source_style = dict(part.split(":", 1) for part in source_menu.get("style", "").split(";") if ":" in part)
+    assert float(menu_style["opacity"]) == pytest.approx(float(source_style["opacity"]))
     assert menu_style["fill"] == "#000000"
     for node_id in ("path4382-5", "path4714-2"):
         outline = next(node for node in root.iter() if node.get("id") == node_id)
@@ -214,9 +216,11 @@ def test_tahoe_dark_kvantum_clears_menu_client_fill_only(tmp_path, monkeypatch):
     assert target.read_bytes() == installed
 
 
-def test_tahoe_dark_kvantum_disables_heavy_native_popup_shadow():
+def test_tahoe_dark_kvantum_keeps_subtle_native_popup_shadow():
     config = ROOT.parent / "kvantum/mac-tahoe-liquid-kde/mac-tahoe-liquid-kdeDark.kvconfig"
-    assert "shadowless_popup=true" in config.read_text()
+    content = config.read_text()
+    assert "menu_shadow_depth=6" in content
+    assert "shadowless_popup=false" in content
 
 
 @pytest.mark.parametrize("mode", ["", "Dark"])

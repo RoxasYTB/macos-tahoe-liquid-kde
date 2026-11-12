@@ -508,6 +508,15 @@ def gtk3_appmenu_module() -> Path | None:
 # is portable.
 
 _PACKAGE_MAP: dict[str, dict[str, str]] = {
+    "python-xlib": {
+        "arch": "python-xlib",
+        "debian": "python3-xlib",
+        "ubuntu": "python3-xlib",
+        "fedora": "python3-xlib",
+        "rhel": "python3-xlib",
+        "centos": "python3-xlib",
+        "opensuse": "python3-python-xlib",
+    },
     "dbusmenu-glib": {
         "arch": "libdbusmenu-glib", "debian": "libdbusmenu-glib4",
         "ubuntu": "libdbusmenu-glib4", "fedora": "libdbusmenu",

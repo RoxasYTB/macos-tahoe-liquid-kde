@@ -45,7 +45,7 @@ def set_surface_fill(root: ET.Element, ids: tuple[str, ...], opacity: str,
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = style.get("opacity", node.get("opacity", "1"))
-        translucent_fill = fill in ("#000000", "#ffffff") and float(alpha) in (.48, .55)
+        translucent_fill = fill in ("#000000", "#ffffff") and float(alpha) in (.32, .46, .48, .50, .55, .62)
         solid_fallback = fill in ("#333333", "#242424") and float(alpha) == 1.0
         if not (translucent_fill or solid_fallback):
             continue
@@ -70,7 +70,7 @@ def clear_menu_client_fill(root: ET.Element) -> None:
         style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
         fill = style.get("fill", node.get("fill"))
         alpha = float(style.get("opacity", node.get("opacity", "1")))
-        if fill not in ("#000000", "#333333", "#242424") or alpha not in (0.0, 0.12, 0.48, 0.55, 1.0):
+        if fill not in ("#000000", "#333333", "#242424") or alpha not in (0.0, 0.12, 0.32, 0.46, 0.48, 0.50, 0.55, 0.62, 1.0):
             continue
         if "opacity" in style:
             style["opacity"] = "0.0"
@@ -118,6 +118,22 @@ def soften_menu_frame(root: ET.Element) -> None:
             style["opacity"] = value
         else:
             node.set("opacity", value)
+        if style:
+            node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
+
+
+def add_subtle_menu_surface(root: ET.Element, opacity: str = "0.50") -> None:
+    """Keep a light neutral veil inside the menu, without tinting its glass."""
+    for node in surface_nodes(root, ("menu-normal",)):
+        style = dict(part.split(":", 1) for part in node.get("style", "").split(";") if ":" in part)
+        fill = style.get("fill", node.get("fill"))
+        alpha = float(style.get("opacity", node.get("opacity", "1")))
+        if fill != "#000000" or alpha != 0.0:
+            continue
+        if "opacity" in style:
+            style["opacity"] = opacity
+        else:
+            node.set("opacity", opacity)
         if style:
             node.set("style", ";".join(f"{key}:{value}" for key, value in style.items()))
 
@@ -176,4 +192,5 @@ def apply_kvantum_surface_defaults(path: Path) -> None:
     if wallpaper == "MacTahoe" and is_dark:
         clear_menu_client_fill(root)
         soften_menu_frame(root)
+        add_subtle_menu_surface(root)
     _write_svg(path, root)

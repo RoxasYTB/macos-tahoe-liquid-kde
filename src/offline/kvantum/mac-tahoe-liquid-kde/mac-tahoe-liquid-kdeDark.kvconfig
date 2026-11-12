@@ -10,7 +10,8 @@ joined_inactive_tabs=false
 group_toolbar_buttons=false
 spread_progressbar=true
 composite=true
-menu_shadow_depth=0
+menu_shadow_depth=1
+menu_separator_height=11
 spread_menuitems=false
 tooltip_shadow_depth=6
 scroll_width=14
@@ -46,7 +47,7 @@ combo_focus_rect=true
 groupbox_top_label=false
 inline_spin_indicators=true
 layout_spacing=3
-submenu_overlap=0
+submenu_overlap=5
 tooltip_delay=-1
 button_contents_shift=false
 animate_states=true
@@ -69,9 +70,9 @@ dialog_button_layout=0
 intensity=1.00
 saturation=1.00
 scrollable_menu=true
-shadowless_popup=true
+shadowless_popup=false
 drag_from_buttons=false
-menu_blur_radius=9
+menu_blur_radius=6
 tooltip_blur_radius=6
 
 [GeneralColors]
@@ -502,10 +503,11 @@ frame.expansion=0
 
 [Menu]
 inherits=PanelButtonCommand
-frame.top=9
-frame.bottom=9
-frame.left=9
-frame.right=9
+frame=false
+frame.top=0
+frame.bottom=0
+frame.left=0
+frame.right=0
 frame.element=menu
 interior.element=menu
 text.normal.color=#eff0f1
