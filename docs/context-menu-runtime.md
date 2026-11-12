@@ -7,8 +7,11 @@ assets and selecting the Kvantum theme is not enough if the running
 
 ## Installer activation
 
-The installer now prepares both the user shell environment and the current
-session before its final Plasma restart:
+The installer prepares the user shell environment and the current session
+before its final Plasma restart. At login, the generated Plasma environment
+hooks also update both the systemd user manager and D-Bus activation
+environment. This matters because a restarted shell may be launched by either
+service manager rather than by the original installer process:
 
 - `QT_PLUGIN_PATH` points first to the locally patched Kvantum plugin. The
   installer updates its own environment and the systemd user manager so the

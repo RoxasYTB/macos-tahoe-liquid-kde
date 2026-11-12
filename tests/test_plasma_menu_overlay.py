@@ -250,3 +250,12 @@ def test_plasma_menu_overlay_path_reaches_current_shell_restart(monkeypatch, tmp
     plasma_theme._set_session_qml_import_path(False)
     assert os.environ["QML_IMPORT_PATH"] == "/other/qml"
     assert manager_environment["QML_IMPORT_PATH"] == "/other/qml"
+
+
+def test_plasma_menu_login_hook_updates_activation_environments(tmp_path, monkeypatch):
+    from steps import plasma_theme
+
+    monkeypatch.setattr(plasma_theme, "_MENU_STYLE_OVERLAY", tmp_path / "qml")
+    contents = plasma_theme._menu_style_env_contents()
+    assert 'systemctl --user set-environment "QML_IMPORT_PATH=${QML_IMPORT_PATH}"' in contents
+    assert "dbus-update-activation-environment --systemd QML_IMPORT_PATH" in contents

@@ -11,6 +11,19 @@ from types import SimpleNamespace
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def isolate_session_environment_commands(monkeypatch):
+    """Installer unit tests must not mutate the maintainer's session manager."""
+    from steps import kvantum
+
+    monkeypatch.delenv("QT_PLUGIN_PATH", raising=False)
+    monkeypatch.delenv("QML_IMPORT_PATH", raising=False)
+    monkeypatch.setattr(
+        kvantum, "run_user",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout=""),
+    )
+
+
 def _neon(monkeypatch, kvantum, destination):
     monkeypatch.setattr(kvantum, "is_debian_family", lambda: True)
     monkeypatch.setattr(kvantum, "_engine_destination", lambda: destination)
@@ -101,6 +114,8 @@ def test_distro_overlay_installs_user_plugin_without_replacing_system_engine(
     ).hexdigest()
     assert str(overlay_root) in env.read_text()
     assert "${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" in env.read_text()
+    assert "systemctl --user set-environment" in env.read_text()
+    assert "dbus-update-activation-environment --systemd QT_PLUGIN_PATH" in env.read_text()
     assert len(calls) == 5 and all(user_owned for _dest, user_owned in calls)
     assert os.environ["QT_PLUGIN_PATH"].startswith(f"{overlay_root}:")
     assert session_calls[-1][2] == "set-environment"
@@ -304,9 +319,10 @@ def test_bundled_archive_extracts_only_after_digest_check(monkeypatch, tmp_path)
     assert (source / "Kvantum/CMakeLists.txt").is_file()
     assert (source / "Kvantum/COPYING").is_file()
     patched_style = (source / "Kvantum/style/Kvantum.cpp").read_text()
-    assert "tahoeChildSelection" in patched_style
+    assert "tahoeNativeSelection" in patched_style
+    assert "pointerHover" in patched_style
     assert "menu->menuAction()->associatedObjects()" in patched_style
-    assert "QColor selectionColor(85, 111, 196)" in patched_style
+    assert "QColor(85, 119, 214)" in patched_style
 
     corrupt = tmp_path / "Kvantum-corrupt.tar.xz"
     corrupt.write_bytes(kvantum.ENGINE_ARCHIVE.read_bytes() + b"corrupt")

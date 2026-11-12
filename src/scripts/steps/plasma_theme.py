@@ -169,12 +169,14 @@ def _menu_style_env_contents() -> str:
         + '        *) export QML_IMPORT_PATH="${_tahoe_qml_menu_path}${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}" ;;\n'
         + "    esac\n"
         + '    systemctl --user set-environment "QML_IMPORT_PATH=${QML_IMPORT_PATH}" >/dev/null 2>&1 || true\n'
+        + '    dbus-update-activation-environment --systemd QML_IMPORT_PATH >/dev/null 2>&1 || true\n'
         + "else\n"
         + f"    _tahoe_qml_menu_path={overlay}\n"
         + f"    _tahoe_clean_qml_path=$(/usr/bin/python3 {refresh} --strip-import-path 2>/dev/null) || _tahoe_clean_qml_path=\n"
         + '    if [ -n "${_tahoe_clean_qml_path}" ]; then\n'
         + '        export QML_IMPORT_PATH="${_tahoe_clean_qml_path}"\n'
         + '        systemctl --user set-environment "QML_IMPORT_PATH=${_tahoe_clean_qml_path}" >/dev/null 2>&1 || true\n'
+        + '        dbus-update-activation-environment --systemd QML_IMPORT_PATH >/dev/null 2>&1 || true\n'
         + "    else\n"
         + "        unset QML_IMPORT_PATH\n"
         + "        systemctl --user unset-environment QML_IMPORT_PATH >/dev/null 2>&1 || true\n"

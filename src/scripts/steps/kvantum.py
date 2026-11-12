@@ -159,6 +159,8 @@ def _overlay_env_contents() -> str:
     return (
         ENGINE_OVERLAY_ENV_MARKER
         + f'export QT_PLUGIN_PATH="{plugin_path}${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
+        + 'systemctl --user set-environment "QT_PLUGIN_PATH=${QT_PLUGIN_PATH}" >/dev/null 2>&1 || true\n'
+        + 'dbus-update-activation-environment --systemd QT_PLUGIN_PATH >/dev/null 2>&1 || true\n'
     )
 
 
